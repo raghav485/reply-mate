@@ -1,0 +1,28 @@
+{
+  "name": "replymate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Context-Aware Reply Assistant — Chrome Extension",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev --workspace @replymate/api",
+    "dev:extension": "npm run dev --workspace @replymate/extension",
+    "dev:app": "tsx scripts/dev-app.ts",
+    "dev:api:log": "bash ./scripts/dev-api-log.sh",
+    "dev:extension:log": "bash ./scripts/dev-extension-log.sh",
+    "debug:draft": "tsx scripts/debug-draft.ts",
+    "env:init": "tsx scripts/env-init.ts",
+    "test": "npm run test --workspaces --if-present",
+    "verify:fast": "npm test && npm run build",
+    "verify": "npm run verify:fast && npm run test:e2e --workspace @replymate/extension",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

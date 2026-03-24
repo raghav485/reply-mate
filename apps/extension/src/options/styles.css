@@ -1,0 +1,51 @@
+@import "../shared/theme.css";
+
+@layer base {
+  body {
+    @apply bg-app-bg text-app-textPrimary font-sans antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+.settings-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.settings-header {
+  margin-bottom: 40px;
+  @apply animate-fade-in;
+}
+
+.settings-header h1 {
+  @apply text-3xl font-bold flex items-center gap-3 mb-2;
+}
+
+.settings-header .logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--color-app-accent), #a78bfa);
+  border-radius: var(--radius-md);
+  @apply shadow-glow;
+}
+
+.settings-header p {
+  @apply text-app-textSecondary text-sm;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-app-bg;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-app-border rounded-full hover:bg-app-textSecondary/30 transition-colors;
+}
+
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}

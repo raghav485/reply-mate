@@ -1,0 +1,72 @@
+@import "../shared/theme.css";
+
+/* Base styles and custom utilities */
+@layer base {
+  body {
+    @apply bg-app-bg text-app-textPrimary font-sans antialiased;
+    margin: 0;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-app-border rounded-full hover:bg-app-textSecondary/30 transition-colors;
+  }
+}
+
+/* Legacy components from redesign */
+@layer components {
+  /* Custom scrollbar for textareas */
+  textarea::-webkit-scrollbar {
+    width: 6px;
+  }
+  textarea::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  textarea::-webkit-scrollbar-thumb {
+    @apply bg-app-border rounded-lg;
+  }
+  
+  /* Glowing button effect */
+  .btn-glow {
+    @apply shadow-glow transition-all duration-200;
+  }
+  .btn-glow:hover {
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.6);
+  }
+
+  /* Gradient border for focused textareas */
+  .textarea-container:focus-within {
+    background: linear-gradient(to right, var(--color-app-accent), #4c1d95);
+    padding: 1px;
+    border-radius: 0.5rem;
+  }
+  .textarea-inner {
+    @apply bg-app-panel;
+    border-radius: calc(0.5rem - 1px);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px rgba(138, 43, 226, 0.2); }
+  to { box-shadow: 0 0 20px rgba(138, 43, 226, 0.6); }
+}

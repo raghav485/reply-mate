@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slack Fixture</title>
+</head>
+<body>
+  <header>
+    <div data-qa="channel_name">#customer-support</div>
+  </header>
+
+  <div data-qa="message_pane" class="c-virtual_list" data-rect-top="0" data-rect-height="680" style="position: relative; min-height: 680px;">
+    <div class="c-virtual_list__scroll_container" data-rect-top="0" data-rect-height="680" style="position: relative; min-height: 680px;">
+      <div data-qa="messages_container" data-rect-top="0" data-rect-height="680" style="position: relative; min-height: 680px;">
+        <div class="c-virtual_list__item" data-rect-top="40" data-rect-height="48">
+          <div id="slack-message-1" data-qa="message_container" data-rect-top="40" data-rect-height="48">
+            <span data-qa="message_sender">Customer One</span>
+            <span data-qa="message_timestamp">7:16 AM</span>
+            <div data-qa="message-text">Hi team, I still cannot access my account.</div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="110" data-rect-height="48">
+          <div id="slack-message-2" data-qa="message_container" data-rect-top="110" data-rect-height="48">
+            <span data-qa="message_sender">Agent Sam</span>
+            <span data-qa="message_timestamp">7:18 AM</span>
+            <div data-qa="message-text">Thanks for the report. Can you share the error text?</div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="-320" data-rect-height="48" style="position: absolute; top: -320px; left: 0; width: 100%;">
+          <div id="slack-message-stale" data-qa="message_container" data-rect-top="-320" data-rect-height="48">
+            <span data-qa="message_sender">Agent Sam</span>
+            <span data-qa="message_timestamp">6:55 AM</span>
+            <div data-qa="message-text">This stale offscreen row should never be captured.</div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="520" data-rect-height="52">
+          <div id="slack-message-3" data-qa="message_container" data-rect-top="520" data-rect-height="52">
+            <span data-qa="message_sender">Carlos Luna</span>
+            <span data-qa="message_timestamp">9:25 AM</span>
+            <div data-qa="message-text">@Lucas Montgomery that's odd. We are on it @crmteam please check CRM system stats.</div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="522" data-rect-height="52">
+          <div class="mirror-wrapper">
+            <div id="slack-message-3-duplicate" data-qa="message_container" data-rect-top="522" data-rect-height="52">
+              <span data-qa="message_sender">Carlos Luna</span>
+              <span data-qa="message_timestamp">9:25 AM</span>
+              <div data-qa="message-text">@Lucas Montgomery that's odd. We are on it @crmteam please check CRM system stats.</div>
+            </div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="585" data-rect-height="52">
+          <div id="slack-message-4" data-qa="message_container" data-rect-top="585" data-rect-height="52">
+            <span data-qa="message_sender">Lucas Montgomery</span>
+            <span data-qa="message_timestamp">9:52 AM</span>
+            <div data-qa="message-text">Just checked again and everything is working on GHL.</div>
+          </div>
+        </div>
+        <div class="c-virtual_list__item" data-rect-top="625" data-rect-height="52">
+          <div id="slack-message-5" data-qa="message_container" data-rect-top="625" data-rect-height="52">
+            <span data-qa="message_sender">Eugin Kim</span>
+            <span data-qa="message_timestamp">9:52 AM</span>
+            <div data-qa="message-text">Thanks for the update, we've been seeing people come back online.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="c-virtual_list__accessibility_mirror" data-rect-top="0" data-rect-height="680">
+      <div class="c-virtual_list__item" data-rect-top="522" data-rect-height="52">
+        <div id="slack-message-3-mirror" data-qa="message_container" data-rect-top="522" data-rect-height="52">
+          <span data-qa="message_sender">Carlos Luna</span>
+          <span data-qa="message_timestamp">9:25 AM</span>
+          <div data-qa="message-text">@Lucas Montgomery that's odd. We are on it @crmteam please check CRM system stats.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section data-qa="message_input">
+    <div id="slack-channel-editor" role="textbox" contenteditable="true" data-rect-top="650" data-rect-height="40"></div>
+  </section>
+
+  <aside class="p-threads_flexpane">
+    <div data-qa="thread_title">Thread: Access issue follow-up</div>
+    <div data-qa="thread_messages_container" data-rect-top="0" data-rect-height="520">
+      <div id="slack-thread-message-1" data-qa="message_container" data-rect-top="90" data-rect-height="48">
+        <span data-qa="message_sender">Customer One</span>
+        <span data-qa="message_timestamp">10:01 AM</span>
+        <div data-qa="message-text">Following up here. The same access error is still happening.</div>
+      </div>
+      <div id="slack-thread-message-2" data-qa="message_container" data-rect-top="160" data-rect-height="48">
+        <span data-qa="message_sender">Agent Sam</span>
+        <span data-qa="message_timestamp">10:04 AM</span>
+        <div data-qa="message-text">Understood. I am checking the thread details now.</div>
+      </div>
+    </div>
+    <section data-qa="thread_message_input">
+      <div id="slack-thread-editor" role="textbox" contenteditable="true" data-rect-top="540" data-rect-height="40"></div>
+    </section>
+  </aside>
+</body>
+</html>
