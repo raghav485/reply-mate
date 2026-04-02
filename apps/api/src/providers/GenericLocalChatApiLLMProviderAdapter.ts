@@ -1,5 +1,6 @@
 import type {
   DraftingProviderStatus,
+  DraftingRuntimeType,
   GenerateDraftRequest,
   GenerateDraftResponse,
   LLMProviderAdapter,
@@ -82,13 +83,14 @@ export class GenericLocalChatApiLLMProviderAdapter implements LLMProviderAdapter
       temperature: 0.15,
       topP: 0.85,
       repeatPenalty: 1.05,
-    }
+    },
+    private readonly runtimeType: DraftingRuntimeType = "generic_local_chat_api"
   ) {}
 
   async checkHealth(): Promise<DraftingProviderStatus> {
     if (!this.modelName.trim()) {
       return {
-        runtimeType: "generic_local_chat_api",
+        runtimeType: this.runtimeType,
         ready: false,
         warning: "No local drafting model is configured.",
         recommendedModelName: "qwen3:8b",
@@ -114,7 +116,7 @@ export class GenericLocalChatApiLLMProviderAdapter implements LLMProviderAdapter
       const ready = modelIds.includes(this.modelName);
 
       return {
-        runtimeType: "generic_local_chat_api",
+        runtimeType: this.runtimeType,
         ready,
         modelName: this.modelName,
         warning: ready
@@ -125,7 +127,7 @@ export class GenericLocalChatApiLLMProviderAdapter implements LLMProviderAdapter
       };
     } catch (error) {
       return {
-        runtimeType: "generic_local_chat_api",
+        runtimeType: this.runtimeType,
         ready: false,
         modelName: this.modelName,
         warning: error instanceof Error ? error.message : String(error),

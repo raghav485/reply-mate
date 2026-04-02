@@ -57,13 +57,29 @@ function makeContext(
     backend: {
       baseUrl: "",
       token: "",
-      authMode: "optional",
       validationWarnings: [],
+    },
+    provider: {
+      mode: "local_models",
+      local: {
+        kind: "ollama",
+        baseUrl: "http://127.0.0.1:11434",
+        modelName: "qwen3:8b",
+        apiKey: "",
+        hasStoredApiKey: false,
+      },
+      cloud: {
+        kind: "openai",
+        baseUrl: "",
+        modelName: "",
+        apiKey: "",
+        hasStoredApiKey: false,
+      },
     },
     preferences: {
       defaultTonePreset: "professional",
       defaultCostMode: "local_only",
-      telemetryEnabled: true,
+      telemetryEnabled: false,
       debugMode: false,
       allowHybridVoiceFallback: false,
     },
@@ -96,6 +112,8 @@ function makeContext(
         warnings: [],
         apiVersion: "v1",
         serverVersion: "test",
+        deploymentMode: "local" as const,
+        cloudGenerationAvailable: false,
         authMode: "optional" as const,
         draftingProvider: {
           runtimeType: "ollama" as const,
@@ -110,6 +128,21 @@ function makeContext(
           warning: "Image OCR is not configured; using metadata-only summary.",
         },
       })),
+      getProviderCredentialStatus: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory" as const, supported: true },
+        credentials: [],
+      })),
+      saveProviderCredential: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory" as const, supported: true },
+        credentials: [],
+      })),
+      deleteProviderCredential: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory" as const, supported: true },
+        credentials: [],
+      })),
       subscribe: vi.fn(() => () => {}),
     },
     apiClient: {
@@ -117,6 +150,7 @@ function makeContext(
       setBaseUrl: vi.fn(),
       setToken: vi.fn(),
       getToken: vi.fn(() => ""),
+      setSessionRefreshHandler: vi.fn(),
       get: vi.fn(),
       post: vi.fn(),
       postMultipart: vi.fn(),

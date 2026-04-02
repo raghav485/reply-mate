@@ -6,7 +6,9 @@ import {
   TELEMETRY_EVENT_NAMES,
 } from "../index.js";
 import type {
+  BillingSummary,
   ComposerSnapshot,
+  DeviceAuthStartResponse,
   GenerateDraftResponse,
 } from "../index.js";
 
@@ -27,6 +29,60 @@ describe("@replymate/contracts", () => {
 
   it("defines a cost mode blocked error message", () => {
     expect(ERROR_MESSAGES.COST_MODE_BLOCKED).toMatch(/cost mode/i);
+  });
+
+  it("defines billing access error messages", () => {
+    expect(ERROR_MESSAGES.PAYMENT_REQUIRED).toMatch(/subscription/i);
+    expect(ERROR_MESSAGES.SUBSCRIPTION_PAST_DUE).toMatch(/past due/i);
+  });
+
+  it("supports billing and device auth contract payloads", () => {
+    const billing: BillingSummary = {
+      apiVersion: "v1",
+      deploymentMode: "hosted_public",
+      account: {
+        accountId: "acct_123",
+        email: "owner@example.com",
+        plan: "pro",
+        subscriptionState: "active",
+        betaAccess: false,
+      },
+      entitlement: {
+        accessState: "active",
+        canGenerate: true,
+        canUseEvidence: true,
+        requiresUpgrade: false,
+        message: "Access is active.",
+      },
+      subscription: {
+        provider: "stripe",
+        status: "active",
+        customerId: "cus_123",
+        subscriptionId: "sub_123",
+        priceId: "price_123",
+      },
+      plan: "pro",
+      currentPeriodEndsAt: new Date().toISOString(),
+      cancelAtPeriodEnd: false,
+      billingPortalAvailable: true,
+      billingReadiness: {
+        status: "configured",
+        checkoutAvailable: true,
+      },
+    };
+
+    const deviceAuth: DeviceAuthStartResponse = {
+      apiVersion: "v1",
+      deploymentMode: "hosted_public",
+      deviceCode: "dev_123",
+      userCode: "ABCD-1234",
+      verificationUrl: "https://app.replymate.app/login?code=ABCD-1234",
+      expiresAt: new Date().toISOString(),
+      pollIntervalMs: 2000,
+    };
+
+    expect(billing.entitlement.accessState).toBe("active");
+    expect(deviceAuth.userCode).toContain("-");
   });
 
   it("supports optional generation and capture debug payloads", () => {

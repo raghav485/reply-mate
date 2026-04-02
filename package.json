@@ -4,7 +4,8 @@
   "private": true,
   "description": "Context-Aware Reply Assistant — Chrome Extension",
   "workspaces": [
-    "apps/*",
+    "apps/api",
+    "apps/extension",
     "packages/*"
   ],
   "scripts": {

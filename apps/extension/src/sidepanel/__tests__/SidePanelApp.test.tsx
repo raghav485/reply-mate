@@ -50,12 +50,20 @@ describe("SidePanelApp", () => {
   let container: HTMLDivElement;
   let root: Root;
   let reloadSpy: ReturnType<typeof vi.spyOn>;
+  let runtimeMessageListener:
+    | ((
+        message: { type: string; payload?: Record<string, unknown> },
+        sender: chrome.runtime.MessageSender,
+        sendResponse: (response?: unknown) => void
+      ) => void)
+    | null;
 
   beforeEach(() => {
     bootstrapMock.mockReset();
     sendRuntimeMessageMock.mockReset();
     bootstrapMock.mockResolvedValue(createBootResult());
     sessionStorage.clear();
+    runtimeMessageListener = null;
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -73,8 +81,14 @@ describe("SidePanelApp", () => {
       value: {
         runtime: {
           onMessage: {
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
+            addListener: vi.fn((listener) => {
+              runtimeMessageListener = listener;
+            }),
+            removeListener: vi.fn((listener) => {
+              if (runtimeMessageListener === listener) {
+                runtimeMessageListener = null;
+              }
+            }),
           },
         },
       },
@@ -229,5 +243,107 @@ describe("SidePanelApp", () => {
       type: "SYNC_ACTIVE_TAB_SESSION",
       payload: { forceRefresh: true },
     });
+  });
+
+  it("shows unsupported-page UI without a retry button", async () => {
+    sendRuntimeMessageMock
+      .mockResolvedValueOnce({
+        ok: true,
+        tabId: 91,
+        session: null,
+        accessReason: "unsupported_page",
+        foundComposer: false,
+        message:
+          "ReplyMate cannot run on browser internal pages like new tabs or settings. Switch to a website and focus a text box.",
+      })
+      .mockResolvedValueOnce({
+        readiness: {
+          drafting: { status: "ready", detail: "" },
+          evidence: { status: "ready", detail: "" },
+          voice: { status: "ready", detail: "" },
+          telemetry: { status: "ready", detail: "" },
+          attachHelper: "none",
+        },
+      });
+
+    await act(async () => {
+      root.render(<SidePanelModule.SidePanelApp />);
+    });
+    await flush();
+
+    expect(container.textContent).toContain("Idle");
+    expect(container.textContent).toContain("Unsupported page");
+    expect(container.textContent).toContain(
+      "ReplyMate cannot run on browser internal pages like new tabs or settings."
+    );
+    expect(
+      container.querySelector('button[aria-label="Retry ReplyMate connection"]')
+    ).toBeNull();
+  });
+
+  it("reconnects when switching from an unsupported page back to a supported site", async () => {
+    sendRuntimeMessageMock
+      .mockResolvedValueOnce({
+        ok: true,
+        tabId: 91,
+        session: null,
+        accessReason: "unsupported_page",
+        foundComposer: false,
+        message:
+          "ReplyMate cannot run on browser internal pages like new tabs or settings. Switch to a website and focus a text box.",
+      })
+      .mockResolvedValueOnce({
+        readiness: {
+          drafting: { status: "ready", detail: "" },
+          evidence: { status: "ready", detail: "" },
+          voice: { status: "ready", detail: "" },
+          telemetry: { status: "ready", detail: "" },
+          attachHelper: "none",
+        },
+      });
+
+    await act(async () => {
+      root.render(<SidePanelModule.SidePanelApp />);
+    });
+    await flush();
+
+    sendRuntimeMessageMock
+      .mockResolvedValueOnce({
+        ok: true,
+        tabId: 55,
+        session: {
+          sessionId: "generic-session",
+          siteId: "generic_web",
+          adapterId: "generic",
+          snapshot: { workspaceKey: "generic::workspace" },
+        },
+      })
+      .mockResolvedValueOnce({
+        readiness: {
+          drafting: { status: "ready", detail: "" },
+          evidence: { status: "ready", detail: "" },
+          voice: { status: "ready", detail: "" },
+          telemetry: { status: "ready", detail: "" },
+          attachHelper: "none",
+        },
+      });
+
+    await act(async () => {
+      runtimeMessageListener?.(
+        {
+          type: "ACTIVE_TAB_CHANGED",
+          payload: { tabId: 55 },
+        },
+        {} as chrome.runtime.MessageSender,
+        () => undefined
+      );
+    });
+    await flush();
+
+    expect(container.textContent).toContain("Connected");
+    expect(
+      container.querySelector('[data-testid="replymate-active-adapter"]')?.textContent
+    ).toContain("generic_web — generic adapter");
+    expect(container.textContent).not.toContain("Unsupported page");
   });
 });

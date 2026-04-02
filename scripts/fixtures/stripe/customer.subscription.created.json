@@ -1,0 +1,24 @@
+{
+  "id": "__EVENT_ID__",
+  "type": "customer.subscription.created",
+  "created": __EVENT_CREATED__,
+  "data": {
+    "object": {
+      "id": "__STRIPE_SUBSCRIPTION_ID__",
+      "customer": "__STRIPE_CUSTOMER_ID__",
+      "status": "trialing",
+      "trial_end": __TRIAL_END__,
+      "current_period_end": __CURRENT_PERIOD_END__,
+      "cancel_at_period_end": false,
+      "items": {
+        "data": [
+          {
+            "price": {
+              "id": "__STRIPE_PRICE_ID__"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

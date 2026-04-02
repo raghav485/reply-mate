@@ -1,105 +1,20 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runDevStack } from "./dev-stack.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
-type ManagedChild = {
-  label: "api" | "extension";
-  process: ChildProcessWithoutNullStreams;
-};
-
-function writePrefixed(label: ManagedChild["label"], chunk: string): void {
-  const prefix = `[${label}] `;
-  const lines = chunk.split(/\r?\n/u);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (!line && index === lines.length - 1) continue;
-    process.stdout.write(`${prefix}${line}\n`);
-  }
-}
-
-function attachOutput(child: ManagedChild): void {
-  child.process.stdout.setEncoding("utf8");
-  child.process.stderr.setEncoding("utf8");
-  child.process.stdout.on("data", (chunk: string) => writePrefixed(child.label, chunk));
-  child.process.stderr.on("data", (chunk: string) => writePrefixed(child.label, chunk));
-}
-
-function spawnDevProcess(label: ManagedChild["label"], script: string): ManagedChild {
-  const child = spawn(npmCommand, ["run", script], {
-    cwd: repoRoot,
-    env: process.env,
-    stdio: ["inherit", "pipe", "pipe"],
-  });
-
-  return {
-    label,
-    process: child,
-  };
-}
-
-function terminate(children: ManagedChild[], signal: NodeJS.Signals): void {
-  for (const child of children) {
-    if (!child.process.killed) {
-      child.process.kill(signal);
-    }
-  }
-}
-
-const children = [
-  spawnDevProcess("api", "dev:api"),
-  spawnDevProcess("extension", "dev:extension"),
-];
-
-for (const child of children) {
-  attachOutput(child);
-}
-
-process.stdout.write("ReplyMate dev startup\n");
-process.stdout.write("- API: http://localhost:3000\n");
-process.stdout.write("- Extension dist: apps/extension/dist\n");
-process.stdout.write("- Load or reload the unpacked extension manually in chrome://extensions\n");
-
-let shuttingDown = false;
-let remainingChildren = children.length;
-let desiredExitCode = 0;
-
-function handleExit(code: number): void {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  desiredExitCode = code;
-  terminate(children, "SIGTERM");
-}
-
-for (const child of children) {
-  child.process.on("exit", (code, signal) => {
-    remainingChildren -= 1;
-
-    if (shuttingDown) {
-      if (remainingChildren <= 0) {
-        process.exit(desiredExitCode);
-      }
-      return;
-    }
-
-    if (signal) {
-      writePrefixed(child.label, `stopped by ${signal}`);
-      handleExit(1);
-      return;
-    }
-
-    writePrefixed(child.label, `exited with code ${code ?? 0}`);
-    handleExit(code ?? 0);
-  });
-}
-
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    desiredExitCode = 0;
-    terminate(children, signal);
-  });
-}
+runDevStack({
+  repoRoot,
+  title: "ReplyMate local-first dev startup",
+  processes: [
+    { label: "api", script: "dev:api" },
+    { label: "extension", script: "dev:extension" },
+  ],
+  startupLines: [
+    "- API: http://localhost:3000",
+    "- Extension dist: apps/extension/dist",
+    "- Load or reload the unpacked extension manually in chrome://extensions",
+    "- For the hosted account surface, start it separately with: npm run dev:web",
+  ],
+});

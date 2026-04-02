@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertBillingSummary,
+  parseBillingPortalRequest,
+  parseCheckoutSessionRequest,
+  parseDeviceAuthCompleteRequest,
+  parseDeviceAuthPollRequest,
+  parseDeviceAuthStartRequest,
+  parseEmailAuthRequest,
+  parseEmailAuthVerifyRequest,
   assertGenerateDraftResponse,
   parseEvidenceIngestBody,
   parseGenerateDraftRequest,
@@ -33,6 +41,61 @@ describe("schemas", () => {
     expect(parsed.mimeType).toBe("audio/webm");
     expect(parsed.languageHint).toBe("en");
     expect(parsed.costMode).toBe("cloud_quality");
+  });
+
+  it("parses billing and auth request payloads", () => {
+    expect(parseEmailAuthRequest({ email: "Owner@example.com " }).email).toBe("owner@example.com");
+    expect(parseEmailAuthVerifyRequest({ token: "magic-token" }).token).toBe("magic-token");
+    expect(parseDeviceAuthStartRequest({ client: "replymate-extension" }).client).toBe(
+      "replymate-extension"
+    );
+    expect(parseDeviceAuthPollRequest({ deviceCode: "dev_123" }).deviceCode).toBe("dev_123");
+    expect(parseDeviceAuthCompleteRequest({ userCode: "ab12-9cde" }).userCode).toBe("AB12-9CDE");
+    expect(parseCheckoutSessionRequest({ successUrl: "https://app.replymate.app/success" }).successUrl).toBe(
+      "https://app.replymate.app/success"
+    );
+    expect(parseBillingPortalRequest({ returnUrl: "https://app.replymate.app/account" }).returnUrl).toBe(
+      "https://app.replymate.app/account"
+    );
+  });
+
+  it("accepts billing summary payloads", () => {
+    expect(() =>
+      assertBillingSummary({
+        apiVersion: "v1",
+        deploymentMode: "hosted_public",
+        account: {
+          accountId: "acct_123",
+          email: "owner@example.com",
+          plan: "pro",
+          subscriptionState: "active",
+          betaAccess: false,
+        },
+        entitlement: {
+          accessState: "active",
+          canGenerate: true,
+          canUseEvidence: true,
+          requiresUpgrade: false,
+          message: "Access is active.",
+        },
+        subscription: {
+          provider: "stripe",
+          status: "active",
+          customerId: "cus_123",
+          subscriptionId: "sub_123",
+          priceId: "price_123",
+        },
+        plan: "pro",
+        trialEndsAt: new Date().toISOString(),
+        currentPeriodEndsAt: new Date().toISOString(),
+        cancelAtPeriodEnd: false,
+        billingPortalAvailable: true,
+        billingReadiness: {
+          status: "configured",
+          checkoutAvailable: true,
+        },
+      })
+    ).not.toThrow();
   });
 
   it("enforces generate request schema", () => {

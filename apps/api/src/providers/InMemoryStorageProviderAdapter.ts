@@ -1,5 +1,6 @@
 import type {
   StorageProviderAdapter,
+  TempObjectGetResponse,
   TempObjectPutRequest,
   TempObjectPutResponse,
 } from "@replymate/contracts";
@@ -35,6 +36,25 @@ export class InMemoryStorageProviderAdapter implements StorageProviderAdapter {
       key: input.key,
       url: `memory://replymate/${encodeURIComponent(input.key)}`,
       expiresAt: new Date(expiresAtMs).toISOString(),
+    };
+  }
+
+  async getTempObject(key: string): Promise<TempObjectGetResponse | null> {
+    const stored = this.objects.get(key);
+    if (!stored) {
+      return null;
+    }
+
+    if (stored.expiresAtMs <= Date.now()) {
+      this.objects.delete(key);
+      return null;
+    }
+
+    return {
+      key,
+      data: Buffer.from(stored.data),
+      mimeType: stored.mimeType,
+      expiresAt: new Date(stored.expiresAtMs).toISOString(),
     };
   }
 

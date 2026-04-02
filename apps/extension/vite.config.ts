@@ -10,7 +10,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    emptyOutDir: true,
+    emptyOutDir: process.env.REPLYMATE_EXTENSION_WATCH_MODE === "1" ? false : true,
     rollupOptions: {
       input: {
         background: resolve(__dirname, "src/background/index.ts"),

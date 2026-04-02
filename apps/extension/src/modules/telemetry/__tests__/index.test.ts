@@ -28,7 +28,6 @@ function createContext(options?: {
         backend: {
           baseUrl: options?.baseUrl ?? "http://localhost:3000",
           token: "",
-          authMode: "optional",
           validationWarnings: [],
         },
         preferences: {
@@ -55,7 +54,34 @@ function createContext(options?: {
         warnings: [],
         apiVersion: "v1",
         serverVersion: "0.3.0",
+        deploymentMode: "local",
+        cloudGenerationAvailable: false,
         authMode: "optional",
+        draftingProvider: {
+          runtimeType: "ollama",
+          ready: true,
+        },
+        parserProvider: {
+          runtimeType: "drafting_runtime",
+          ready: false,
+          imageOcrAvailable: false,
+          fallbackMode: "metadata_local",
+        },
+      })),
+      getProviderCredentialStatus: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory", supported: true },
+        credentials: [],
+      })),
+      saveProviderCredential: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory", supported: true },
+        credentials: [],
+      })),
+      deleteProviderCredential: vi.fn(async () => ({
+        apiVersion: "v1",
+        storage: { backend: "memory", supported: true },
+        credentials: [],
       })),
       subscribe: vi.fn(() => () => {}),
     } as unknown) as ModuleContext["settings"],

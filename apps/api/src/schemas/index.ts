@@ -1,23 +1,50 @@
 import type {
   ActionMode,
+  AccountAccessState,
+  AccountPlan,
+  AccountSummary,
+  BillingPortalRequest,
+  BillingSummary,
   ComposerMode,
+  CloudProviderKind,
   ComposerSnapshot,
   ContextScope,
   CostMode,
+  DeviceAuthCompleteRequest,
+  DeviceAuthPollRequest,
+  DeviceAuthStartRequest,
+  EmailAuthRequest,
+  EmailAuthVerifyRequest,
   EvidenceMode,
   EvidenceSummary,
   GenerateDraftRequest,
   GenerateDraftResponse,
+  LocalProviderKind,
+  ModelMode,
+  ProviderCredentialDeleteRequest,
+  ProviderCredentialUpsertRequest,
+  ProviderConfig,
+  SettingsValidationRequest,
   SiteId,
+  SubscriptionState,
   TonePreset,
   TranscriptionResponse,
+  CheckoutSessionRequest,
 } from "@replymate/contracts";
 import { TELEMETRY_EVENT_NAMES } from "@replymate/contracts";
 import { ValidationError } from "../core/errors.js";
 
-export type SettingsValidateBody = {
-  client?: string;
-};
+export type SettingsValidateBody = SettingsValidationRequest;
+export type ProviderCredentialUpsertBody = ProviderCredentialUpsertRequest;
+export type ProviderCredentialDeleteBody = ProviderCredentialDeleteRequest;
+
+export type EmailAuthRequestBody = EmailAuthRequest;
+export type EmailAuthVerifyBody = EmailAuthVerifyRequest;
+export type DeviceAuthStartBody = DeviceAuthStartRequest;
+export type DeviceAuthPollBody = DeviceAuthPollRequest;
+export type DeviceAuthCompleteBody = DeviceAuthCompleteRequest;
+export type CheckoutSessionBody = CheckoutSessionRequest;
+export type BillingPortalBody = BillingPortalRequest;
 
 export type EvidenceIngestBody = {
   sessionId: string;
@@ -81,6 +108,49 @@ const ALLOWED_CONTEXT_SCOPES: ReadonlySet<ContextScope> = new Set([
   "page",
   "mixed",
   "none",
+]);
+
+const ALLOWED_ACCOUNT_PLANS: ReadonlySet<AccountPlan> = new Set([
+  "beta",
+  "starter",
+  "pro",
+  "enterprise",
+]);
+
+const ALLOWED_SUBSCRIPTION_STATES: ReadonlySet<SubscriptionState> = new Set([
+  "inactive",
+  "beta",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+]);
+
+const ALLOWED_ACCOUNT_ACCESS_STATES: ReadonlySet<AccountAccessState> = new Set([
+  "inactive",
+  "beta",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+]);
+
+const ALLOWED_MODEL_MODES: ReadonlySet<ModelMode> = new Set([
+  "local_models",
+  "byok_api",
+]);
+
+const ALLOWED_LOCAL_PROVIDER_KINDS: ReadonlySet<LocalProviderKind> = new Set([
+  "ollama",
+  "openai_compatible_local",
+]);
+
+const ALLOWED_CLOUD_PROVIDER_KINDS: ReadonlySet<CloudProviderKind> = new Set([
+  "openai",
+  "anthropic",
+  "gemini",
+  "openrouter",
+  "openai_compatible_custom",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -445,7 +515,304 @@ export function parseSettingsValidateBody(input: unknown): SettingsValidateBody 
 
   return {
     client: readString(input, "client", { required: false, allowEmpty: true }),
+    providerConfig: parseProviderConfig(input.providerConfig),
   };
+}
+
+function parseProviderConfig(input: unknown): ProviderConfig | undefined {
+  if (input === undefined || input === null) {
+    return undefined;
+  }
+  if (!isRecord(input)) {
+    throw new ValidationError("Provider configuration must be an object.");
+  }
+
+  const mode = readString(input, "mode", { required: true });
+  if (!mode || !ALLOWED_MODEL_MODES.has(mode as ModelMode)) {
+    throw new ValidationError("Provider configuration mode is invalid.");
+  }
+
+  const local = isRecord(input.local) ? input.local : {};
+  const localKind = readString(local, "kind", { required: true });
+  if (!localKind || !ALLOWED_LOCAL_PROVIDER_KINDS.has(localKind as LocalProviderKind)) {
+    throw new ValidationError("Local provider kind is invalid.");
+  }
+
+  const cloud = isRecord(input.cloud) ? input.cloud : {};
+  const cloudKind = readString(cloud, "kind", { required: true });
+  if (!cloudKind || !ALLOWED_CLOUD_PROVIDER_KINDS.has(cloudKind as CloudProviderKind)) {
+    throw new ValidationError("Cloud provider kind is invalid.");
+  }
+
+  return {
+    mode: mode as ModelMode,
+    local: {
+      kind: localKind as LocalProviderKind,
+      baseUrl: readString(local, "baseUrl", { required: false, allowEmpty: true }) || "",
+      modelName: readString(local, "modelName", { required: false, allowEmpty: true }) || "",
+      apiKey: readString(local, "apiKey", { required: false, allowEmpty: true }) || "",
+      hasStoredApiKey:
+        typeof local.hasStoredApiKey === "boolean" ? local.hasStoredApiKey : false,
+    },
+    cloud: {
+      kind: cloudKind as CloudProviderKind,
+      baseUrl: readString(cloud, "baseUrl", { required: false, allowEmpty: true }) || "",
+      modelName: readString(cloud, "modelName", { required: false, allowEmpty: true }) || "",
+      apiKey: readString(cloud, "apiKey", { required: false, allowEmpty: true }) || "",
+      hasStoredApiKey:
+        typeof cloud.hasStoredApiKey === "boolean" ? cloud.hasStoredApiKey : false,
+    },
+  };
+}
+
+function parseProviderCredentialRef(
+  input: unknown
+): ProviderCredentialDeleteRequest {
+  if (!isRecord(input)) {
+    throw new ValidationError("Provider credential payload must be an object.");
+  }
+
+  const target = readString(input, "target", { required: true });
+  if (!target || (target !== "local" && target !== "cloud")) {
+    throw new ValidationError("Provider credential target is invalid.");
+  }
+
+  const kind = readString(input, "kind", { required: true });
+  if (!kind) {
+    throw new ValidationError("Provider credential kind is required.");
+  }
+  if (
+    (target === "local" &&
+      !ALLOWED_LOCAL_PROVIDER_KINDS.has(kind as LocalProviderKind)) ||
+    (target === "cloud" &&
+      !ALLOWED_CLOUD_PROVIDER_KINDS.has(kind as CloudProviderKind))
+  ) {
+    throw new ValidationError("Provider credential kind is invalid.");
+  }
+
+  return {
+    target,
+    kind: kind as ProviderCredentialDeleteRequest["kind"],
+  };
+}
+
+export function parseProviderCredentialDeleteRequest(
+  input: unknown
+): ProviderCredentialDeleteBody {
+  return parseProviderCredentialRef(input);
+}
+
+export function parseProviderCredentialUpsertRequest(
+  input: unknown
+): ProviderCredentialUpsertBody {
+  const ref = parseProviderCredentialRef(input);
+  if (!isRecord(input)) {
+    throw new ValidationError("Provider credential payload must be an object.");
+  }
+
+  const apiKey = readString(input, "apiKey", { required: true })?.trim();
+  if (!apiKey) {
+    throw new ValidationError("Provider credential apiKey is required.");
+  }
+
+  return {
+    ...ref,
+    apiKey,
+  };
+}
+
+export function parseEmailAuthRequest(input: unknown): EmailAuthRequestBody {
+  if (!isRecord(input)) {
+    throw new ValidationError("Email auth request must be an object.");
+  }
+
+  const email = readString(input, "email", { required: true })?.trim().toLowerCase();
+  if (!email) {
+    throw new ValidationError("Email auth request email is required.");
+  }
+
+  return { email };
+}
+
+export function parseEmailAuthVerifyRequest(input: unknown): EmailAuthVerifyBody {
+  if (!isRecord(input)) {
+    throw new ValidationError("Email auth verify request must be an object.");
+  }
+
+  const token = readString(input, "token", { required: true })?.trim();
+  if (!token) {
+    throw new ValidationError("Email auth verify token is required.");
+  }
+
+  return { token };
+}
+
+export function parseDeviceAuthStartRequest(input: unknown): DeviceAuthStartBody {
+  if (input === undefined || input === null) {
+    return {};
+  }
+  if (!isRecord(input)) {
+    throw new ValidationError("Device auth start request must be an object.");
+  }
+
+  const client = readString(input, "client", { allowEmpty: false });
+  return client ? { client } : {};
+}
+
+export function parseDeviceAuthPollRequest(input: unknown): DeviceAuthPollBody {
+  if (!isRecord(input)) {
+    throw new ValidationError("Device auth poll request must be an object.");
+  }
+
+  const deviceCode = readString(input, "deviceCode", { required: true })?.trim();
+  if (!deviceCode) {
+    throw new ValidationError("Device auth poll request deviceCode is required.");
+  }
+
+  return { deviceCode };
+}
+
+export function parseDeviceAuthCompleteRequest(input: unknown): DeviceAuthCompleteBody {
+  if (!isRecord(input)) {
+    throw new ValidationError("Device auth complete request must be an object.");
+  }
+
+  const userCode = readString(input, "userCode", { required: true })?.trim().toUpperCase();
+  if (!userCode) {
+    throw new ValidationError("Device auth complete request userCode is required.");
+  }
+
+  return { userCode };
+}
+
+export function parseCheckoutSessionRequest(input: unknown): CheckoutSessionBody {
+  if (input === undefined || input === null) {
+    return {};
+  }
+  if (!isRecord(input)) {
+    throw new ValidationError("Checkout request must be an object.");
+  }
+
+  const successUrl = readString(input, "successUrl");
+  const cancelUrl = readString(input, "cancelUrl");
+  return {
+    ...(successUrl ? { successUrl } : {}),
+    ...(cancelUrl ? { cancelUrl } : {}),
+  };
+}
+
+export function parseBillingPortalRequest(input: unknown): BillingPortalBody {
+  if (input === undefined || input === null) {
+    return {};
+  }
+  if (!isRecord(input)) {
+    throw new ValidationError("Billing portal request must be an object.");
+  }
+
+  const returnUrl = readString(input, "returnUrl");
+  return returnUrl ? { returnUrl } : {};
+}
+
+function parseAccountSummary(input: unknown): AccountSummary {
+  if (!isRecord(input)) {
+    throw new ValidationError("Account summary is invalid.");
+  }
+
+  const accountId = readString(input, "accountId", { required: true });
+  const email = readString(input, "email", { required: true });
+  const plan = readString(input, "plan", { required: true });
+  const subscriptionState = readString(input, "subscriptionState", { required: true });
+  const betaAccess = readBoolean(input, "betaAccess");
+
+  if (
+    !accountId ||
+    !email ||
+    !plan ||
+    !ALLOWED_ACCOUNT_PLANS.has(plan as AccountPlan) ||
+    !subscriptionState ||
+    !ALLOWED_SUBSCRIPTION_STATES.has(subscriptionState as SubscriptionState)
+  ) {
+    throw new ValidationError("Account summary fields are invalid.");
+  }
+
+  return {
+    accountId,
+    email,
+    plan: plan as AccountPlan,
+    subscriptionState: subscriptionState as SubscriptionState,
+    betaAccess,
+    displayName: readString(input, "displayName"),
+  };
+}
+
+export function assertBillingSummary(input: unknown): asserts input is BillingSummary {
+  if (!isRecord(input)) {
+    throw new ValidationError("Billing summary is invalid.");
+  }
+
+  parseAccountSummary(input.account);
+
+  if (!isRecord(input.entitlement)) {
+    throw new ValidationError("Billing summary entitlement is invalid.");
+  }
+  const accessState = readString(input.entitlement, "accessState", { required: true });
+  if (!accessState || !ALLOWED_ACCOUNT_ACCESS_STATES.has(accessState as AccountAccessState)) {
+    throw new ValidationError("Billing summary accessState is invalid.");
+  }
+  readBoolean(input.entitlement, "canGenerate");
+  readBoolean(input.entitlement, "canUseEvidence");
+  readBoolean(input.entitlement, "requiresUpgrade");
+  readString(input.entitlement, "message", { required: true });
+
+  if (input.subscription !== null && input.subscription !== undefined) {
+    if (!isRecord(input.subscription)) {
+      throw new ValidationError("Billing summary subscription is invalid.");
+    }
+    const provider = readString(input.subscription, "provider", { required: true });
+    const status = readString(input.subscription, "status", { required: true });
+    if (provider !== "stripe") {
+      throw new ValidationError("Billing summary subscription provider is invalid.");
+    }
+    if (!status || !ALLOWED_SUBSCRIPTION_STATES.has(status as SubscriptionState)) {
+      throw new ValidationError("Billing summary subscription status is invalid.");
+    }
+    readString(input.subscription, "customerId", { allowEmpty: false });
+    readString(input.subscription, "subscriptionId", { allowEmpty: false });
+    readString(input.subscription, "priceId", { allowEmpty: false });
+  }
+
+  const plan = readString(input, "plan", { required: true });
+  if (!plan || !ALLOWED_ACCOUNT_PLANS.has(plan as AccountPlan)) {
+    throw new ValidationError("Billing summary plan is invalid.");
+  }
+
+  readString(input, "apiVersion", { required: true });
+  const deploymentMode = readString(input, "deploymentMode", { required: true });
+  if (!deploymentMode || !["local", "hosted_beta", "hosted_public"].includes(deploymentMode)) {
+    throw new ValidationError("Billing summary deploymentMode is invalid.");
+  }
+
+  if (input.trialEndsAt !== undefined) {
+    readString(input, "trialEndsAt", { required: true });
+  }
+  if (input.currentPeriodEndsAt !== undefined) {
+    readString(input, "currentPeriodEndsAt", { required: true });
+  }
+
+  readBoolean(input, "cancelAtPeriodEnd");
+  readBoolean(input, "billingPortalAvailable");
+
+  if (!isRecord(input.billingReadiness)) {
+    throw new ValidationError("Billing summary billingReadiness is invalid.");
+  }
+  const readinessStatus = readString(input.billingReadiness, "status", { required: true });
+  if (!readinessStatus || !["configured", "partial", "unconfigured"].includes(readinessStatus)) {
+    throw new ValidationError("Billing summary billingReadiness.status is invalid.");
+  }
+  readBoolean(input.billingReadiness, "checkoutAvailable");
+  if (input.billingReadiness.message !== undefined) {
+    readString(input.billingReadiness, "message", { required: true });
+  }
 }
 
 export function parseEvidenceIngestBody(input: unknown): EvidenceIngestBody {
@@ -533,6 +900,7 @@ export function parseGenerateDraftRequest(input: unknown): GenerateDraftRequest 
     evidence,
     usedVoiceInput: readBoolean(input, "usedVoiceInput"),
     costMode: costMode as CostMode,
+    providerConfig: parseProviderConfig(input.providerConfig),
   };
 }
 

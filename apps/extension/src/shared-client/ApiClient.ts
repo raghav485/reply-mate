@@ -29,6 +29,7 @@ export class ApiClientError extends Error {
 export class ApiClientImpl implements IApiClient {
   private baseUrl = "";
   private token = "";
+  private sessionRefreshHandler: (() => Promise<string | null>) | null = null;
 
   getBaseUrl(): string {
     return this.baseUrl;
@@ -45,6 +46,10 @@ export class ApiClientImpl implements IApiClient {
 
   getToken(): string {
     return this.token;
+  }
+
+  setSessionRefreshHandler(handler: (() => Promise<string | null>) | null): void {
+    this.sessionRefreshHandler = handler;
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -81,16 +86,27 @@ export class ApiClientImpl implements IApiClient {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         ...init,
         signal: controller.signal,
-        headers: {
-          ...((init.headers as Record<string, string>) ?? {}),
-          ...(this.token
-            ? { Authorization: `Bearer ${this.token}` }
-            : {}),
-        },
+        headers: this.buildHeaders(init.headers),
       });
+
+      if (
+        response.status === 401 &&
+        this.sessionRefreshHandler &&
+        this.token
+      ) {
+        const refreshedToken = await this.sessionRefreshHandler();
+        if (refreshedToken) {
+          this.token = refreshedToken;
+          response = await fetch(url, {
+            ...init,
+            signal: controller.signal,
+            headers: this.buildHeaders(init.headers),
+          });
+        }
+      }
 
       if (!response.ok) {
         let payload: ApiErrorPayload | null = null;
@@ -123,5 +139,13 @@ export class ApiClientImpl implements IApiClient {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private buildHeaders(headers?: HeadersInit): Record<string, string> {
+    const normalized = { ...((headers as Record<string, string>) ?? {}) };
+    if (this.token) {
+      normalized.Authorization = `Bearer ${this.token}`;
+    }
+    return normalized;
   }
 }

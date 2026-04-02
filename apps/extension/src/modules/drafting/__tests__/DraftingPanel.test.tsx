@@ -212,11 +212,44 @@ function createSettings(debugMode: boolean) {
     load: vi.fn(),
     save: vi.fn(),
     validateConnection: vi.fn(),
+    getProviderCredentialStatus: vi.fn(async () => ({
+      apiVersion: "v1",
+      storage: { backend: "memory", supported: true },
+      credentials: [],
+    })),
+    saveProviderCredential: vi.fn(async () => ({
+      apiVersion: "v1",
+      storage: { backend: "memory", supported: true },
+      credentials: [],
+    })),
+    deleteProviderCredential: vi.fn(async () => ({
+      apiVersion: "v1",
+      storage: { backend: "memory", supported: true },
+      credentials: [],
+    })),
     subscribe: vi.fn(() => () => undefined),
     get: vi.fn(() => ({
       backend: {
         baseUrl: "http://127.0.0.1:3000",
         token: "",
+        validationWarnings: [],
+      },
+      provider: {
+        mode: "local_models",
+        local: {
+          kind: "ollama",
+          baseUrl: "http://127.0.0.1:11434",
+          modelName: "qwen3:8b",
+          apiKey: "",
+          hasStoredApiKey: false,
+        },
+        cloud: {
+          kind: "openai",
+          baseUrl: "",
+          modelName: "",
+          apiKey: "",
+          hasStoredApiKey: false,
+        },
       },
       preferences: {
         defaultTonePreset: "professional",

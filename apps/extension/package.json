@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
-    "build": "tsc --noEmit && vite build && ../../node_modules/.bin/esbuild src/content/index.ts --bundle --format=iife --platform=browser --target=chrome114 --outfile=dist/content.js && cp manifest.json dist/",
+    "dev": "node ./scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build && ../../node_modules/.bin/esbuild src/content/index.ts --bundle --format=iife --platform=browser --target=chrome114 --outfile=dist/content.js && cp manifest.json dist/manifest.json",
+    "build:watch": "tsc --noEmit && vite build --watch --mode development",
+    "build:store": "tsc --noEmit && vite build --mode production && ../../node_modules/.bin/esbuild src/content/index.ts --bundle --format=iife --platform=browser --target=chrome114 --outfile=dist/content.js && cp manifest.store.json dist/manifest.json",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
     "test:e2e:headed": "npm run build && playwright test --headed",

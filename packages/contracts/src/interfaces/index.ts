@@ -14,6 +14,10 @@ import type {
   ComposerSession,
   RuntimeSurface,
   AppSettings,
+  ProviderCredentialDeleteRequest,
+  ProviderCredentialStatusResponse,
+  ProviderCredentialUpsertRequest,
+  ProviderConfig,
   BackendSettings,
   SettingsValidationResponse,
   DraftingProviderStatus,
@@ -94,14 +98,19 @@ export interface FeatureFlagService {
 // API Client
 // =============================================================================
 
+export type ApiRequestOptions = {
+  timeoutMs?: number;
+};
+
 export interface ApiClient {
   getBaseUrl(): string;
   setBaseUrl(url: string): void;
   setToken(token: string): void;
   getToken(): string;
-  get<T>(path: string): Promise<T>;
-  post<T>(path: string, body?: unknown): Promise<T>;
-  postMultipart<T>(path: string, formData: FormData): Promise<T>;
+  setSessionRefreshHandler(handler: (() => Promise<string | null>) | null): void;
+  get<T>(path: string, options?: ApiRequestOptions): Promise<T>;
+  post<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T>;
+  postMultipart<T>(path: string, formData: FormData, options?: ApiRequestOptions): Promise<T>;
 }
 
 // =============================================================================
@@ -113,8 +122,19 @@ export interface SettingsService {
   get(): AppSettings;
   save(settings: AppSettings): Promise<void>;
   validateConnection(
-    backend: Pick<BackendSettings, "baseUrl" | "token">
+    input: Pick<BackendSettings, "baseUrl" | "token"> & {
+      providerConfig?: ProviderConfig;
+    }
   ): Promise<SettingsValidationResponse>;
+  getProviderCredentialStatus(
+    input: Pick<BackendSettings, "baseUrl" | "token">
+  ): Promise<ProviderCredentialStatusResponse>;
+  saveProviderCredential(
+    input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialUpsertRequest
+  ): Promise<ProviderCredentialStatusResponse>;
+  deleteProviderCredential(
+    input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialDeleteRequest
+  ): Promise<ProviderCredentialStatusResponse>;
   subscribe(listener: (settings: AppSettings) => void): () => void;
 }
 
@@ -235,8 +255,16 @@ export interface TempObjectPutResponse {
   expiresAt: string;
 }
 
+export interface TempObjectGetResponse {
+  key: string;
+  data: Buffer;
+  mimeType: string;
+  expiresAt: string;
+}
+
 export interface StorageProviderAdapter {
   putTempObject(input: TempObjectPutRequest): Promise<TempObjectPutResponse>;
+  getTempObject(key: string): Promise<TempObjectGetResponse | null>;
   deleteTempObject(key: string): Promise<void>;
 }
 

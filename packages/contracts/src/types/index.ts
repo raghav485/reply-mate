@@ -36,7 +36,10 @@ export type CostMode = "local_only" | "hybrid_low_cost" | "cloud_quality";
 /** Drafting runtime families supported by the backend. */
 export type DraftingRuntimeType =
   | "ollama"
-  | "generic_local_chat_api";
+  | "generic_local_chat_api"
+  | "openai_compatible"
+  | "anthropic"
+  | "gemini";
 
 /** Parser runtime families supported by the backend. */
 export type ParserRuntimeType =
@@ -267,13 +270,150 @@ export type TonePreset =
 // =============================================================================
 
 export type AuthMode = "optional" | "required";
+export type ExtensionEnvironment = "development" | "beta" | "production";
+export type DeploymentMode = "local" | "hosted_beta" | "hosted_public";
+export type ModelMode = "local_models" | "byok_api";
+export type LocalProviderKind = "ollama" | "openai_compatible_local";
+export type CloudProviderKind =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "openrouter"
+  | "openai_compatible_custom";
+export type AccountPlan = "beta" | "starter" | "pro" | "enterprise";
+export type SubscriptionState =
+  | "inactive"
+  | "beta"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled";
+
+export type AccountSummary = {
+  accountId: string;
+  email: string;
+  plan: AccountPlan;
+  subscriptionState: SubscriptionState;
+  betaAccess: boolean;
+  displayName?: string;
+};
+
+export type AccountAccessState =
+  | "inactive"
+  | "beta"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled";
+
+export type HostedSession = {
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresAt: string;
+  refreshExpiresAt: string;
+  account: AccountSummary;
+};
+
+export type AccountPreferences = {
+  defaultTonePreset: TonePreset;
+  defaultCostMode: CostMode;
+};
+
+export type EntitlementSummary = {
+  accessState: AccountAccessState;
+  canGenerate: boolean;
+  canUseEvidence: boolean;
+  requiresUpgrade: boolean;
+  message: string;
+};
+
+export type BillingSubscriptionSummary = {
+  provider: "stripe";
+  status: SubscriptionState;
+  customerId?: string;
+  subscriptionId?: string;
+  priceId?: string;
+};
+
+export type BillingReadinessSummary = {
+  status: "configured" | "partial" | "unconfigured";
+  checkoutAvailable: boolean;
+  message?: string;
+};
+
+export type BillingSummary = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  account: AccountSummary;
+  entitlement: EntitlementSummary;
+  subscription: BillingSubscriptionSummary | null;
+  plan: AccountPlan;
+  trialEndsAt?: string;
+  currentPeriodEndsAt?: string;
+  cancelAtPeriodEnd: boolean;
+  billingPortalAvailable: boolean;
+  billingReadiness: BillingReadinessSummary;
+};
+
+export type LocalProviderConfig = {
+  kind: LocalProviderKind;
+  baseUrl: string;
+  modelName: string;
+  apiKey: string;
+  hasStoredApiKey: boolean;
+};
+
+export type CloudProviderConfig = {
+  kind: CloudProviderKind;
+  baseUrl: string;
+  modelName: string;
+  apiKey: string;
+  hasStoredApiKey: boolean;
+};
+
+export type ProviderConfig = {
+  mode: ModelMode;
+  local: LocalProviderConfig;
+  cloud: CloudProviderConfig;
+};
 
 export type BackendSettings = {
   baseUrl: string;
   token: string;
-  authMode: AuthMode;
   validationWarnings: string[];
   lastValidatedAt?: string;
+};
+
+export type ProviderCredentialTarget = "local" | "cloud";
+
+export type ProviderCredentialStorageBackend =
+  | "macos_keychain"
+  | "memory"
+  | "unsupported";
+
+export type ProviderCredentialRef = {
+  target: ProviderCredentialTarget;
+  kind: LocalProviderKind | CloudProviderKind;
+};
+
+export type ProviderCredentialUpsertRequest = ProviderCredentialRef & {
+  apiKey: string;
+};
+
+export type ProviderCredentialDeleteRequest = ProviderCredentialRef;
+
+export type ProviderCredentialState = ProviderCredentialRef & {
+  hasStoredApiKey: boolean;
+};
+
+export type ProviderCredentialStatusResponse = {
+  apiVersion: string;
+  storage: {
+    backend: ProviderCredentialStorageBackend;
+    supported: boolean;
+    message?: string;
+  };
+  credentials: ProviderCredentialState[];
 };
 
 export type UserPreferences = {
@@ -286,8 +426,14 @@ export type UserPreferences = {
 
 export type AppSettings = {
   backend: BackendSettings;
+  provider: ProviderConfig;
   preferences: UserPreferences;
   featureFlags: Record<FeatureFlagKey, boolean>;
+};
+
+export type SettingsValidationRequest = {
+  client?: string;
+  providerConfig?: ProviderConfig;
 };
 
 export type SettingsValidationResponse = {
@@ -295,9 +441,145 @@ export type SettingsValidationResponse = {
   warnings: string[];
   apiVersion: string;
   serverVersion: string;
+  deploymentMode: DeploymentMode;
+  cloudGenerationAvailable: boolean;
   authMode: AuthMode;
+  account?: AccountSummary;
   draftingProvider: DraftingProviderStatus;
   parserProvider: ParserProviderStatus;
+};
+
+export type BetaSessionRequest = {
+  email: string;
+  inviteCode: string;
+};
+
+export type BetaSessionResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  session: HostedSession;
+};
+
+export type AccountProfileResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  cloudGenerationAvailable: boolean;
+  account: AccountSummary;
+};
+
+export type RefreshSessionRequest = {
+  refreshToken: string;
+};
+
+export type RefreshSessionResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  session: HostedSession;
+};
+
+export type EmailAuthRequest = {
+  email: string;
+};
+
+export type EmailAuthRequestResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  accepted: true;
+};
+
+export type EmailAuthVerifyRequest = {
+  token: string;
+};
+
+export type EmailAuthVerifyResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  session: HostedSession;
+};
+
+export type DeviceAuthStartRequest = {
+  client?: string;
+};
+
+export type DeviceAuthStartResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  deviceCode: string;
+  userCode: string;
+  verificationUrl: string;
+  expiresAt: string;
+  pollIntervalMs: number;
+};
+
+export type DeviceAuthPollRequest = {
+  deviceCode: string;
+};
+
+export type DeviceAuthPollResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  status: "pending" | "approved" | "expired" | "denied";
+  pollIntervalMs: number;
+  session?: HostedSession;
+};
+
+export type DeviceAuthCompleteRequest = {
+  userCode: string;
+};
+
+export type DeviceAuthCompleteResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  completed: true;
+};
+
+export type CheckoutSessionRequest = {
+  successUrl?: string;
+  cancelUrl?: string;
+};
+
+export type CheckoutSessionResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  url: string;
+};
+
+export type BillingPortalRequest = {
+  returnUrl?: string;
+};
+
+export type BillingPortalResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  url: string;
+};
+
+export type AccountPreferencesResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  preferences: AccountPreferences;
+};
+
+export type GenerationRecordSummary = {
+  generationId: string;
+  requestId: string;
+  createdAt: string;
+  siteId: SiteId;
+  actionMode: ActionMode;
+  tonePreset: TonePreset;
+  providerPath: "local_model" | "cloud";
+  warningCount: number;
+  usedVoiceInput: boolean;
+  contextScopeUsed: ContextScope;
+  evidenceIdsUsed: string[];
+  primaryDraft: string;
+  alternateDraft: string;
+};
+
+export type GenerationHistoryResponse = {
+  apiVersion: string;
+  deploymentMode: DeploymentMode;
+  generations: GenerationRecordSummary[];
 };
 
 export type DraftingProviderStatus = {
@@ -354,6 +636,7 @@ export type GenerateDraftRequest = {
   evidence: EvidenceSummary[];
   usedVoiceInput: boolean;
   costMode: CostMode;
+  providerConfig?: ProviderConfig;
 };
 
 export type DraftRole = "primary" | "alternate";

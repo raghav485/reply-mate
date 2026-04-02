@@ -1,18 +1,33 @@
 # ReplyMate
 
-ReplyMate is a local-first Chrome extension for drafting customer-facing replies inside Slack, Gmail, and similar web apps.
+ReplyMate is a free, local-first Chrome extension for drafting customer-facing replies inside Slack, Gmail, and similar web apps.
 
-This repo contains:
+The product now has two user-facing modes:
 
-- a local API server in `apps/api`
-- a Chrome extension in `apps/extension`
-- shared contracts in `packages/contracts`
+- `Local Models`: run your own local model through Ollama or another local OpenAI-compatible endpoint
+- `Use Your Own API`: connect your own OpenAI, Anthropic, Gemini, OpenRouter, or custom OpenAI-compatible account
+
+ReplyMate does not bill or proxy your provider usage in those modes.
+
+Provider-key handling now works like this:
+
+- the extension stores provider metadata only
+- your local ReplyMate API stores provider keys securely
+- on macOS, secure storage uses the Keychain
+
+Public store launch is still blocked until the same secure-storage story exists across every supported OS.
+
+## Repo Layout
+
+- `apps/api`: local API server
+- `apps/extension`: Chrome extension
+- `packages/contracts`: shared types and interfaces
 
 ## Recommended Local Stack
 
-For the current setup, use:
+For the default local setup, use:
 
-- Writing model: `qwen3:8b`
+- writing model: `qwen3:8b`
 - OCR/image parser model: `minicpm-v`
 
 These run locally through Ollama.
@@ -22,10 +37,10 @@ These run locally through Ollama.
 - Node.js `20+`
 - npm
 - Google Chrome or Chromium
-- Ollama installed locally
+- Ollama installed locally if you want the default local-model path
 - macOS if you want the current native `DOCX` / text-PDF extraction path
 
-## Install Dependencies
+## Install
 
 From the repo root:
 
@@ -33,7 +48,7 @@ From the repo root:
 npm install
 ```
 
-## Install Local Models
+## Local Model Setup
 
 Start Ollama if it is not already running:
 
@@ -55,282 +70,152 @@ ollama run qwen3:8b "Fix this sentence: i thing we a rre good to hgo"
 ollama list
 ```
 
-## Configure Local Defaults
+## Local API Config
 
-ReplyMate now loads local backend config automatically from:
+ReplyMate loads local backend config automatically from:
 
 1. `.env.example`
 2. `.env.local` if it exists
 
-For most local setups, `.env.example` is already enough.
+For most local runs, `.env.example` is already enough.
 
-If you want your own machine-specific overrides, create `.env.local` once:
+If you want machine-specific overrides, create `.env.local` once:
 
 ```bash
 npm run env:init
 ```
 
-Shell environment variables still override both files if you intentionally export them.
-
 Important:
 
-- The extension manifest currently allows backend calls only to `http://localhost:3000` and `http://127.0.0.1:3000`.
-- Keep the ReplyMate API on port `3000` unless you also change the extension manifest.
+- the extension manifest currently allows backend calls only to `http://localhost:3000` and `http://127.0.0.1:3000`
+- keep the ReplyMate API on port `3000` unless you also change the extension manifest
 
-## Daily Development Startup
+## Start The Free Product Stack
 
-From the repo root:
+Recommended daily startup:
 
 ```bash
 npm run dev:app
 ```
 
-This starts:
+That starts:
 
-- the API in watch mode
-- the extension build/watch loop writing to `apps/extension/dist`
+- API on `http://localhost:3000`
+- extension watcher output in `apps/extension/dist`
 
-It also assumes:
+Then load or reload the unpacked extension from:
 
-- Ollama is already running
-- your unpacked extension will be loaded or reloaded manually in Chrome
-
-To verify the backend is reachable:
-
-```bash
-curl http://localhost:3000/v1/health
+```text
+apps/extension/dist
 ```
 
-## Load the Extension in Chrome
+in `chrome://extensions`.
 
-1. Open `chrome://extensions`
-2. Enable `Developer mode`
-3. Click `Load unpacked`
-4. Select `apps/extension/dist`
+## Extension Settings
 
-If the watcher rebuilds later, click `Reload` for the ReplyMate extension in `chrome://extensions`.
+Open ReplyMate settings and configure:
 
-## Configure the Extension
+### 1. ReplyMate API Base URL
 
-Open the ReplyMate options page and set:
+Use:
 
-- `API Base URL`: `http://localhost:3000` (now the local default)
-- `Bearer Token`: leave blank unless you separately add backend auth
-
-Click `Validate Connection`.
-
-Expected result for the recommended stack:
-
-- Drafting runtime: `Ollama`
-- Drafting status: `Ready`
-- Drafting model: `qwen3:8b`
-- Evidence parser: `Ready` if `minicpm-v` is installed
-
-If the parser model is missing, drafting can still work while image OCR falls back or becomes unavailable.
-
-## Advanced Manual Workflow
-
-If you want to run pieces separately:
-
-### API only
-
-```bash
-npm run dev:api
+```text
+http://localhost:3000
 ```
 
-If you want a log file that Codex can inspect directly:
+### 2. Mode
 
-```bash
-npm run dev:api:log
-```
+Choose one:
 
-Default log path:
+- `Local Models`
+- `Use Your Own API`
 
-- `/tmp/replymate-api-dev.log`
+### 3. Provider Setup
 
-### Extension only
+If you choose `Local Models`, configure either:
 
-Build once:
+- `Ollama`
+- `Local OpenAI-compatible`
 
-```bash
-npm run build --workspace @replymate/extension
-```
+Typical local defaults:
 
-Watch and rebuild on change:
+- base URL: `http://127.0.0.1:11434`
+- model: `qwen3:8b`
 
-```bash
-npm run dev:extension
-```
+If you choose `Use Your Own API`, configure one of:
 
-If you want a log file that Codex can inspect directly:
+- `OpenAI`
+- `Anthropic`
+- `Gemini`
+- `OpenRouter`
+- `Custom OpenAI-compatible`
 
-```bash
-npm run dev:extension:log
-```
+You provide:
 
-Default log path:
+- model name
+- provider API key
+- optional base URL override for presets, or required base URL for custom OpenAI-compatible endpoints
 
-- `/tmp/replymate-extension-dev.log`
+When you click `Apply Settings`, ReplyMate sends that key to your local API for secure storage and clears it from extension storage.
 
-## Smoke Test
+### 4. Validate Connection
 
-### Drafting test
+Use `Validate Connection` after changing the provider mode or model settings.
 
-In a Slack thread reply box:
+Expected results:
 
-1. Open ReplyMate
-2. Make sure context diagnostics shows thread or channel context
-3. Type:
+- local mode: ReplyMate reports your local drafting runtime as ready
+- BYOK mode: ReplyMate reports your selected provider as ready
+- evidence/parser may still report metadata fallback unless you also configured a dedicated OCR runtime locally
 
-   ```text
-   i thing we a rre good to hgo
-   ```
+## Product Verification
 
-4. Click `Generate`
+### Local Models
+
+1. Start `npm run dev:app`
+2. Load the unpacked extension
+3. In settings, choose `Local Models`
+4. Set provider to `Ollama`
+5. Set model to `qwen3:8b`
+6. Validate connection
+7. Open Slack or Gmail and generate a reply
 
 Expected result:
 
-- `Cleaned Draft` fixes the sentence with minimal change
-- `Context Reply` is the better sendable version
-- if the two results are too similar, ReplyMate should still return best effort with warnings instead of a `502`
+- no ReplyMate sign-in is required
+- generation works through the local model
 
-### Name correction test
+### Use Your Own API
 
-If the correct name is clearly present in the Slack thread:
-
-1. Type the name incorrectly in the draft
-2. Click `Generate`
-
-Expected result:
-
-- both variants should use the corrected high-confidence name from context
-
-### Image OCR test
-
-1. Upload a screenshot in the Evidence panel
-2. Click `Upload Evidence`
+1. Start `npm run dev:app`
+2. Load the unpacked extension
+3. In settings, choose `Use Your Own API`
+4. Pick a provider preset
+5. Enter your model name and API key
+6. Validate connection
+7. Generate a reply
 
 Expected result:
 
-- with `minicpm-v` installed, image evidence should use OCR-backed extraction
-- without it, the parser will degrade to metadata-only behavior
+- no ReplyMate sign-in is required
+- generation runs through your selected provider
+- ReplyMate does not bill or proxy the usage
 
-## File-Type Support
+## Store-Readiness Notes
 
-Current evidence behavior:
+- Generic web support is part of the product scope, so the store build requests broad `https://*/*` host access.
+- Browser-internal pages such as `chrome://` and `chrome-search://` remain unsupported by Chrome itself.
+- Telemetry is off by default.
+- Draft debug tracing is opt-in and not part of the normal user flow.
 
-- Images: OCR through `minicpm-v`
-- `DOCX`: native text extraction on macOS
-- Text-based `PDF`: native text extraction on macOS
-- Scanned or image-only `PDF`: degraded extraction warning
+## Tests And Verification
 
-If you do not care about image OCR, you can switch the parser to metadata-only mode:
-
-```bash
-export REPLYMATE_PARSER_RUNTIME=metadata_local
-```
-
-## Test Commands
-
-Run the fast repo gate:
-
-```bash
-npm run verify:fast
-```
-
-Run package-specific checks:
+Targeted checks:
 
 ```bash
 npm test --workspace @replymate/api
-npm run build --workspace @replymate/api
-
 npm test --workspace @replymate/extension
+npm run build --workspace @replymate/api
 npm run build --workspace @replymate/extension
+npm run verify:fast
 ```
-
-Run the full repo gate, including extension Playwright:
-
-```bash
-npm run verify
-```
-
-## Playwright E2E
-
-The extension package includes a Playwright harness for local fixture-backed validation.
-
-Install the extension package dependencies after pulling the latest repo changes:
-
-```bash
-npm install
-npx playwright install chromium
-```
-
-Run the extension E2E suite:
-
-```bash
-npm run test:e2e --workspace @replymate/extension
-```
-
-Useful variants:
-
-```bash
-npm run test:e2e:headed --workspace @replymate/extension
-npm run test:e2e:debug --workspace @replymate/extension
-```
-
-Notes:
-
-- These tests use the built unpacked extension from `apps/extension/dist`.
-- The API server is started automatically through Playwright `webServer`.
-- Test artifacts are written to `apps/extension/test-results/`.
-- The sidepanel regression harness expects the ReplyMate heading plus the stable connection/composer test hooks rendered by the sidepanel shell.
-- Codex can inspect the log files above directly, but it cannot read Antigravity terminal scrollback itself.
-
-## Draft Debug Probe
-
-Use the manual draft probe when you want to inspect a single local improve-draft response outside the extension UI:
-
-```bash
-npm run debug:draft
-```
-
-## Common Problems
-
-### Drafting is ready but OCR is not
-
-Cause:
-
-- `qwen3:8b` is installed
-- `minicpm-v` is missing or named differently in Ollama
-
-Check:
-
-```bash
-ollama list
-```
-
-Make sure the parser env matches the exact installed model name.
-
-### Extension cannot reach the backend
-
-Check:
-
-- the API is running on port `3000`
-- the options page uses `http://localhost:3000`
-- the extension has been reloaded after rebuilding
-
-### Generate is slow
-
-This is usually one of:
-
-- Ollama was cold and had to load the model
-- the model is still downloading
-- the local machine is under load
-
-The backend now uses a `45000 ms` default drafting timeout and returns best-effort output for similarity-only quality problems.
-
-## Notes
-
-- ReplyMate is currently local-first.
-- The recommended model stack in this repo remains `qwen3:8b` for writing and `minicpm-v` for OCR/images.
-- The current extension build target is Chrome Manifest V3.

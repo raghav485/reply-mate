@@ -11,6 +11,11 @@ import {
 import { ApiClientError } from "../shared-client/ApiClient.js";
 import { EvidenceApiClient, type EvidenceIngestResponse } from "./EvidenceApiClient.js";
 import { buildEvidenceIngestFailure } from "./evidenceErrors.js";
+import {
+  classifyBridgeAccessError,
+  classifyTabUrl,
+  type SessionAccessReason,
+} from "./tabAccess.js";
 import type {
   ActionMode,
   AdapterId,
@@ -85,6 +90,7 @@ type InsertExecutionResponse = {
 
 const workspaceStateStore = new WorkspaceStateStore();
 const RUNTIME_VALIDATION_CACHE_TTL_MS = 5_000;
+const GENERATE_REQUEST_TIMEOUT_MS = 120_000;
 const runtimeValidationCache = new Map<
   string,
   { expiresAt: number; result: SettingsValidationResponse }
@@ -244,7 +250,17 @@ function normalizeValidationKey(input: string): string {
 }
 
 function getRuntimeValidationCacheKey(settings: AppSettings): string {
-  return `${normalizeValidationKey(settings.backend.baseUrl)}::${settings.backend.token || ""}`;
+  return [
+    normalizeValidationKey(settings.backend.baseUrl),
+    settings.backend.token || "",
+    settings.provider.mode,
+    settings.provider.local.kind,
+    settings.provider.local.baseUrl,
+    settings.provider.local.modelName,
+    settings.provider.cloud.kind,
+    settings.provider.cloud.baseUrl,
+    settings.provider.cloud.modelName,
+  ].join("::");
 }
 
 function clearRuntimeValidationCache(): void {
@@ -288,8 +304,20 @@ async function pingTabBridge(tabId: number): Promise<boolean> {
 async function ensureTabBridge(tabId: number): Promise<{
   ready: boolean;
   recovered: boolean;
+  reason?: Extract<SessionAccessReason, "unsupported_page" | "bridge_unavailable">;
   message?: string;
 }> {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  const tabAccess = classifyTabUrl(tab?.url);
+  if (!tabAccess.supported) {
+    return {
+      ready: false,
+      recovered: false,
+      reason: tabAccess.reason,
+      message: tabAccess.message,
+    };
+  }
+
   const ready = await pingTabBridge(tabId);
   if (ready) {
     return { ready: true, recovered: false };
@@ -301,13 +329,12 @@ async function ensureTabBridge(tabId: number): Promise<{
       files: ["content.js"],
     });
   } catch (error) {
+    const accessError = classifyBridgeAccessError(tab?.url, error);
     return {
       ready: false,
       recovered: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "ReplyMate could not inject its page bridge into this tab.",
+      reason: accessError.reason,
+      message: accessError.message,
     };
   }
 
@@ -320,16 +347,16 @@ async function ensureTabBridge(tabId: number): Promise<{
       : {
           ready: false,
           recovered: true,
-          message: "ReplyMate could not reconnect to this page. Refresh Slack and try again.",
+          reason: "bridge_unavailable",
+          message: "ReplyMate could not reconnect to this page. Refresh the website and try again.",
         };
   } catch (error) {
+    const accessError = classifyBridgeAccessError(tab?.url, error);
     return {
       ready: false,
       recovered: true,
-      message:
-        error instanceof Error
-          ? error.message
-          : "ReplyMate could not reconnect to this page. Refresh Slack and try again.",
+      reason: accessError.reason,
+      message: accessError.message,
     };
   }
 }
@@ -383,6 +410,7 @@ async function ensureSessionForTab(
   session: ComposerSession | null;
   bridgeRecovered: boolean;
   bridgeReady: boolean;
+  accessReason?: SessionAccessReason;
   message?: string;
   foundComposer: boolean;
   staleCleared: boolean;
@@ -400,13 +428,20 @@ async function ensureSessionForTab(
 
   const bridge = await ensureTabBridge(tabId);
   if (!bridge.ready) {
+    const isUnsupportedPage = bridge.reason === "unsupported_page";
+    const hadSession = Boolean(existing);
+    if (hadSession && isUnsupportedPage) {
+      sessionStore.clearSession(tabId);
+      broadcastSessionUpdated(null, tabId);
+    }
     return {
       session: null,
       bridgeRecovered: bridge.recovered,
-      bridgeReady: false,
+      bridgeReady: isUnsupportedPage,
+      accessReason: bridge.reason,
       message: bridge.message,
       foundComposer: false,
-      staleCleared: false,
+      staleCleared: hadSession && isUnsupportedPage,
     };
   }
 
@@ -437,6 +472,7 @@ async function ensureSessionForTab(
       session: null,
       bridgeRecovered: bridge.recovered,
       bridgeReady: true,
+      accessReason: "no_composer",
       message: "ReplyMate could not find an active text box on this page. Focus the composer and try again.",
       foundComposer: false,
       staleCleared: hadSession,
@@ -450,6 +486,7 @@ async function ensureSessionForTab(
     bridgeReady: true,
     foundComposer: refreshResult?.foundComposer ?? Boolean(session?.snapshot),
     staleCleared: false,
+    accessReason: session?.snapshot ? undefined : "no_composer",
     message:
       session?.snapshot
         ? undefined
@@ -478,6 +515,7 @@ async function validateRuntimeSettingsCached(
     .validateConnection({
       baseUrl: currentSettings.backend.baseUrl,
       token: currentSettings.backend.token,
+      providerConfig: currentSettings.provider,
     })
     .then((result) => {
       runtimeValidationCache.set(cacheKey, {
@@ -583,6 +621,14 @@ function buildDraftingReadiness(
       detail: validation.draftingProvider.modelName
         ? `Model ${validation.draftingProvider.modelName}`
         : "Local drafting runtime is ready.",
+    };
+  }
+
+  if (validation.cloudGenerationAvailable) {
+    return {
+      status: "ready",
+      label: "Drafting ready",
+      detail: "Your configured API provider is available for drafting.",
     };
   }
 
@@ -827,6 +873,7 @@ bootPromise.then(async ({ ctx, registry }) => {
             tabId,
             session: ensured.session ?? null,
             recovered: ensured.bridgeRecovered,
+            accessReason: ensured.accessReason,
             message: ensured.message,
             foundComposer: ensured.foundComposer,
             staleCleared: ensured.staleCleared,
@@ -926,7 +973,10 @@ bootPromise.then(async ({ ctx, registry }) => {
 
       case "VALIDATE_SETTINGS": {
         settings
-          .validateConnection(payload.backend)
+          .validateConnection({
+            ...(payload.backend || {}),
+            providerConfig: payload.providerConfig || settings.get().provider,
+          })
           .then((result) => sendResponse({ ok: true, result }))
           .catch((error) => {
             sendResponse({
@@ -1488,7 +1538,9 @@ bootPromise.then(async ({ ctx, registry }) => {
         } satisfies DraftingWorkspaceStatePatch);
 
         ctx.apiClient
-          .post<GenerateDraftResponse>("/v1/generate", request)
+          .post<GenerateDraftResponse>("/v1/generate", request, {
+            timeoutMs: GENERATE_REQUEST_TIMEOUT_MS,
+          })
           .then((response) => {
             bus.publish({
               type: "generation/succeeded",
@@ -1537,6 +1589,8 @@ bootPromise.then(async ({ ctx, registry }) => {
             });
             const nextError =
               error instanceof Error ? error.message : String(error);
+            const errorCode =
+              error instanceof ApiClientError ? error.errorCode : undefined;
             workspaceStateStore
               .savePartial(workspaceKey, {
                 siteId: request.siteId,
@@ -1553,7 +1607,7 @@ bootPromise.then(async ({ ctx, registry }) => {
                 sendResponse({
                   success: false,
                   error: nextError,
-                  errorCode: error instanceof ApiClientError ? error.errorCode : undefined,
+                  errorCode,
                 });
               });
           });

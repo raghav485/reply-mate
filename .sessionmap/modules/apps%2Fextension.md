@@ -1,0 +1,187 @@
+# Module: apps/extension
+
+Generated At: 2026-03-31T20:41:20.498Z
+Summary Source: heuristic
+
+## Summary
+Module apps/extension contains 90 file(s), has 1 internal dependency link(s), and 0 dependent link(s). External packages include @tailwindcss/vite, @vitejs/plugin-react, node:child_process. It currently has 61 unresolved import(s).
+
+## Files
+- apps/extension/e2e/gmail-fixture.spec.ts
+- apps/extension/e2e/helpers.ts
+- apps/extension/e2e/sidepanel.spec.ts
+- apps/extension/e2e/slack-fixture.spec.ts
+- apps/extension/manifest.json
+- apps/extension/manifest.store.json
+- apps/extension/package.json
+- apps/extension/playwright.config.ts
+- apps/extension/public/icons/icon-128.png
+- apps/extension/public/icons/icon-16.png
+- apps/extension/public/icons/icon-48.png
+- apps/extension/scripts/dev.mjs
+- apps/extension/src/adapters/generic/__tests__/GenericAdapter.test.ts
+- apps/extension/src/adapters/generic/GenericAdapter.ts
+- apps/extension/src/adapters/gmail/__tests__/GmailAdapter.test.ts
+- apps/extension/src/adapters/gmail/GmailAdapter.ts
+- apps/extension/src/adapters/shared/captureDiagnostics.ts
+- apps/extension/src/adapters/shared/dom.ts
+- apps/extension/src/adapters/shared/pageContext.ts
+- apps/extension/src/adapters/slack/__tests__/SlackAdapter.test.ts
+- apps/extension/src/adapters/slack/SlackAdapter.ts
+- apps/extension/src/background/__tests__/evidenceErrors.test.ts
+- apps/extension/src/background/billingState.ts
+- apps/extension/src/background/EvidenceApiClient.ts
+- apps/extension/src/background/evidenceErrors.ts
+- apps/extension/src/background/index.ts
+- apps/extension/src/content/__tests__/adapterSelection.test.ts
+- apps/extension/src/content/adapterSelection.ts
+- apps/extension/src/content/index.ts
+- apps/extension/src/content/pageVoiceBridge.ts
+- apps/extension/src/core/boot/bootstrap.ts
+- apps/extension/src/core/bus/__tests__/EventBus.test.ts
+- apps/extension/src/core/bus/EventBus.ts
+- apps/extension/src/core/permissions/FeatureFlagService.ts
+- apps/extension/src/core/registry/__tests__/CapabilityRegistry.test.ts
+- apps/extension/src/core/registry/__tests__/ModuleRegistry.test.ts
+- apps/extension/src/core/registry/__tests__/UiRegistry.test.ts
+- apps/extension/src/core/registry/CapabilityRegistry.ts
+- apps/extension/src/core/registry/index.ts
+- apps/extension/src/core/registry/ModuleRegistry.ts
+- apps/extension/src/core/registry/README.md
+- apps/extension/src/core/registry/UiRegistry.ts
+- apps/extension/src/core/session/__tests__/SessionStore.test.ts
+- apps/extension/src/core/session/index.ts
+- apps/extension/src/core/session/SessionStore.ts
+- apps/extension/src/core/settings/__tests__/hostedBillingUi.test.ts
+- apps/extension/src/core/settings/__tests__/SettingsService.test.ts
+- apps/extension/src/core/settings/hostedBillingUi.ts
+- apps/extension/src/core/settings/index.ts
+- apps/extension/src/core/settings/SettingsService.ts
+- apps/extension/src/core/ui/ActiveSessionContext.tsx
+- apps/extension/src/core/ui/ActiveTabContext.tsx
+- apps/extension/src/core/ui/Logger.ts
+- apps/extension/src/core/ui/ShellContext.tsx
+- apps/extension/src/core/workspace/WorkspaceStateStore.ts
+- apps/extension/src/fixture/gmail.html
+- apps/extension/src/fixture/index.html
+- apps/extension/src/fixture/slack.html
+- apps/extension/src/modules/drafting/__tests__/DraftingPanel.test.tsx
+- apps/extension/src/modules/drafting/CaptureDiagnosticsPanel.tsx
+- apps/extension/src/modules/drafting/ContextDiagnosticsDrawer.tsx
+- apps/extension/src/modules/drafting/DraftingDebugPanel.tsx
+- apps/extension/src/modules/drafting/DraftingPanel.tsx
+- apps/extension/src/modules/drafting/index.ts
+- apps/extension/src/modules/evidence/EvidencePanel.tsx
+- apps/extension/src/modules/evidence/index.ts
+- apps/extension/src/modules/settings/index.ts
+- apps/extension/src/modules/settings/SettingsPanel.tsx
+- apps/extension/src/modules/telemetry/__tests__/index.test.ts
+- apps/extension/src/modules/telemetry/index.ts
+- apps/extension/src/modules/voice/__tests__/voicePolicy.test.ts
+- apps/extension/src/modules/voice/index.ts
+- apps/extension/src/modules/voice/VoicePanel.tsx
+- apps/extension/src/modules/voice/voicePolicy.ts
+- apps/extension/src/options/index.html
+- apps/extension/src/options/main.tsx
+- apps/extension/src/options/OptionsApp.tsx
+- apps/extension/src/options/styles.css
+- apps/extension/src/shared-client/__tests__/ApiClient.test.ts
+- apps/extension/src/shared-client/ApiClient.ts
+- apps/extension/src/shared/runtime.ts
+- apps/extension/src/shared/theme.css
+- apps/extension/src/sidepanel/__tests__/SidePanelApp.test.tsx
+- apps/extension/src/sidepanel/index.html
+- apps/extension/src/sidepanel/main.tsx
+- apps/extension/src/sidepanel/SidePanelApp.tsx
+- apps/extension/src/sidepanel/styles.css
+- apps/extension/src/sidepanel/useSidePanelSessionController.ts
+- apps/extension/tsconfig.json
+- apps/extension/vite.config.ts
+
+## Internal Dependencies
+- packages/contracts/src/index.ts
+
+## Internal Dependents
+- None
+
+## External Dependencies
+- @tailwindcss/vite
+- @vitejs/plugin-react
+- node:child_process
+- node:fs
+- node:fs/promises
+- node:os
+- node:path
+- node:url
+- path
+- playwright/test
+- react
+- react-dom/client
+- vitest
+- vitest/config
+
+## Unresolved Imports
+- ../../../core/bus/EventBus.js
+- ../../core/ui/ActiveSessionContext.js
+- ../../core/ui/ActiveTabContext.js
+- ../../core/ui/ShellContext.js
+- ../../core/workspace/WorkspaceStateStore.js
+- ../../modules/drafting/index.js
+- ../../modules/evidence/index.js
+- ../../modules/settings/index.js
+- ../../modules/telemetry/index.js
+- ../../modules/voice/index.js
+- ../../shared-client/ApiClient.js
+- ../../shared/runtime.js
+- ../adapters/generic/GenericAdapter.js
+- ../adapters/gmail/GmailAdapter.js
+- ../adapters/slack/SlackAdapter.js
+- ../ApiClient.js
+- ../bus/EventBus.js
+- ../CapabilityRegistry.js
+- ../core/boot/bootstrap.js
+- ../core/ui/ActiveTabContext.js
+- ../core/ui/ShellContext.js
+- ../DraftingPanel.js
+- ../EventBus.js
+- ../GenericAdapter.js
+- ../GmailAdapter.js
+- ../hostedBillingUi.js
+- ../index.js
+- ../ModuleRegistry.js
+- ../permissions/FeatureFlagService.js
+- ../registry/UiRegistry.js
+- ../session/index.js
+- ../SessionStore.js
+- ../settings/index.js
+- ../SettingsService.js
+- ../shared-client/ApiClient.js
+- ../shared/captureDiagnostics.js
+- ../shared/pageContext.js
+- ../shared/runtime.js
+- ../SidePanelApp.js
+- ../SlackAdapter.js
+- ../ui/Logger.js
+- ../UiRegistry.js
+- ./billingState.js
+- ./CapabilityRegistry.js
+- ./captureDiagnostics.js
+- ./CaptureDiagnosticsPanel.js
+- ./ContextDiagnosticsDrawer.js
+- ./DraftingDebugPanel.js
+- ./DraftingPanel.js
+- ./EvidenceApiClient.js
+- ./evidenceErrors.js
+- ./EvidencePanel.js
+- ./ModuleRegistry.js
+- ./OptionsApp.js
+- ./pageVoiceBridge.js
+- ./SessionStore.js
+- ./SettingsPanel.js
+- ./SettingsService.js
+- ./SidePanelApp.js
+- ./useSidePanelSessionController.js
+- ./VoicePanel.js
+
+## Related Sessions
+- None

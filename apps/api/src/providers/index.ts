@@ -1,3 +1,5 @@
+import path from "node:path";
+import { S3Client } from "@aws-sdk/client-s3";
 import type {
   DraftingRuntimeType,
   DocumentParserAdapter,
@@ -6,6 +8,9 @@ import type {
   StorageProviderAdapter,
   TranscriptionProviderAdapter,
 } from "@replymate/contracts";
+import { resolveDeploymentMode } from "../core/authSession.js";
+import { CloudLLMProviderAdapter } from "./CloudLLMProviderAdapter.js";
+import { FileSystemStorageProviderAdapter } from "./FileSystemStorageProviderAdapter.js";
 import { GenericLocalChatApiVisionDocumentParserAdapter } from "./GenericLocalChatApiVisionDocumentParserAdapter.js";
 import { GenericLocalChatApiLLMProviderAdapter } from "./GenericLocalChatApiLLMProviderAdapter.js";
 import { InMemoryStorageProviderAdapter } from "./InMemoryStorageProviderAdapter.js";
@@ -13,6 +18,7 @@ import { LocalDocumentParserAdapter } from "./LocalDocumentParserAdapter.js";
 import { LocalTranscriptionProviderAdapter } from "./LocalTranscriptionProviderAdapter.js";
 import { OllamaLLMProviderAdapter } from "./OllamaLLMProviderAdapter.js";
 import { OllamaVisionDocumentParserAdapter } from "./OllamaVisionDocumentParserAdapter.js";
+import { S3StorageProviderAdapter } from "./S3StorageProviderAdapter.js";
 
 export type ProviderRuntime = {
   drafting: {
@@ -35,6 +41,8 @@ export type ProviderRuntime = {
   };
 };
 
+type StorageDriver = "memory" | "filesystem" | "s3";
+
 function resolveDraftingRuntimeType(): DraftingRuntimeType {
   const raw = process.env.REPLYMATE_DRAFT_RUNTIME?.trim();
   if (raw === "generic_local_chat_api") {
@@ -53,6 +61,66 @@ function resolveParserRuntimeType(): ParserRuntimeType {
     return raw;
   }
   return "ollama";
+}
+
+function resolveStorageDriver(): StorageDriver {
+  const raw = process.env.REPLYMATE_STORAGE_DRIVER?.trim();
+  if (raw === "filesystem" || raw === "s3") {
+    return raw;
+  }
+  if (raw === "memory") {
+    return raw;
+  }
+
+  return resolveDeploymentMode() === "local" ? "memory" : "s3";
+}
+
+function resolveStorageForcePathStyle(): boolean {
+  const raw = process.env.REPLYMATE_STORAGE_FORCE_PATH_STYLE?.trim().toLowerCase();
+  if (raw === "true") {
+    return true;
+  }
+  if (raw === "false") {
+    return false;
+  }
+  return Boolean(process.env.REPLYMATE_STORAGE_ENDPOINT?.trim());
+}
+
+function resolveStorageProvider(): StorageProviderAdapter {
+  const driver = resolveStorageDriver();
+  if (driver === "filesystem") {
+    return new FileSystemStorageProviderAdapter(
+      process.env.REPLYMATE_STORAGE_FILESYSTEM_ROOT?.trim() ||
+        path.join(process.cwd(), ".replymate-data", "storage")
+    );
+  }
+  if (driver === "s3") {
+    const bucket = process.env.REPLYMATE_STORAGE_BUCKET?.trim() || "";
+    const region = process.env.REPLYMATE_STORAGE_REGION?.trim() || "";
+    const endpoint = process.env.REPLYMATE_STORAGE_ENDPOINT?.trim() || "";
+    const accessKeyId = process.env.REPLYMATE_STORAGE_ACCESS_KEY_ID?.trim() || "";
+    const secretAccessKey = process.env.REPLYMATE_STORAGE_SECRET_ACCESS_KEY?.trim() || "";
+
+    if (!bucket || !region || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "REPLYMATE_STORAGE_DRIVER=s3 requires bucket, region, access key, and secret key configuration."
+      );
+    }
+
+    return new S3StorageProviderAdapter(
+      new S3Client({
+        region,
+        endpoint: endpoint || undefined,
+        forcePathStyle: resolveStorageForcePathStyle(),
+        credentials: {
+          accessKeyId,
+          secretAccessKey,
+        },
+      }),
+      { bucket }
+    );
+  }
+  return new InMemoryStorageProviderAdapter();
 }
 
 function resolveDraftingProvider(config: {
@@ -139,6 +207,13 @@ export function createProviderRuntime(): ProviderRuntime {
   const repeatPenalty = Number(process.env.REPLYMATE_DRAFT_REPEAT_PENALTY || 1.05);
   const numPredict = Number(process.env.REPLYMATE_DRAFT_NUM_PREDICT || 420);
   const keepAlive = process.env.REPLYMATE_DRAFT_KEEP_ALIVE?.trim() || "15m";
+  const cloudBaseUrl = process.env.REPLYMATE_CLOUD_DRAFT_BASE_URL?.trim() || "";
+  const cloudModelName = process.env.REPLYMATE_CLOUD_DRAFT_MODEL?.trim() || "";
+  const cloudApiKey = process.env.REPLYMATE_CLOUD_DRAFT_API_KEY?.trim() || "";
+  const cloudTimeoutMs = Number(process.env.REPLYMATE_CLOUD_DRAFT_TIMEOUT_MS || 45_000);
+  const cloudTemperature = Number(process.env.REPLYMATE_CLOUD_DRAFT_TEMPERATURE || 0.15);
+  const cloudTopP = Number(process.env.REPLYMATE_CLOUD_DRAFT_TOP_P || 0.85);
+  const cloudRepeatPenalty = Number(process.env.REPLYMATE_CLOUD_DRAFT_REPEAT_PENALTY || 1.05);
   const parserRuntimeType = resolveParserRuntimeType();
   const parserBaseUrl =
     process.env.REPLYMATE_PARSER_BASE_URL?.trim() ||
@@ -161,7 +236,7 @@ export function createProviderRuntime(): ProviderRuntime {
       parserRuntimeType === "drafting_runtime" ? "drafting_runtime" : "metadata_local",
   });
 
-  return {
+  const runtime: ProviderRuntime = {
     drafting: {
       runtimeType,
       provider: resolveDraftingProvider({
@@ -178,13 +253,26 @@ export function createProviderRuntime(): ProviderRuntime {
       }),
     },
     llm: {
-      cloud: null,
+      cloud:
+        cloudBaseUrl && cloudModelName
+          ? new CloudLLMProviderAdapter(
+              cloudBaseUrl,
+              cloudModelName,
+              cloudTimeoutMs,
+              cloudApiKey,
+              {
+                temperature: cloudTemperature,
+                topP: cloudTopP,
+                repeatPenalty: cloudRepeatPenalty,
+              }
+            )
+          : null,
     },
     transcription: {
       remote: new LocalTranscriptionProviderAdapter(),
       cloud: null,
     },
-    storage: new InMemoryStorageProviderAdapter(),
+    storage: resolveStorageProvider(),
     parser: {
       runtimeType: parserRuntimeType,
       provider: resolveParserProvider({
@@ -201,4 +289,6 @@ export function createProviderRuntime(): ProviderRuntime {
       allowMetadataFallback: parserAllowMetadataFallback,
     },
   };
+
+  return runtime;
 }

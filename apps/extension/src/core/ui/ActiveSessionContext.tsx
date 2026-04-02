@@ -14,11 +14,12 @@ export type SessionSyncReason = SessionRefreshReason | "retry";
 
 export type ActiveSessionConnectionState =
   | "connecting"
+  | "idle"
   | "connected"
   | "disconnected"
   | "error";
 
-export type ComposerAvailability = "available" | "missing" | "unknown";
+export type ComposerAvailability = "available" | "missing" | "unknown" | "unsupported";
 
 export type ActiveSessionController = {
   session: ComposerSession | null;
@@ -41,6 +42,7 @@ export type ActiveSessionController = {
     tabId?: number | null;
     session?: ComposerSession | null;
     message?: string;
+    accessReason?: "unsupported_page" | "bridge_unavailable" | "no_composer";
     foundComposer?: boolean;
     staleCleared?: boolean;
   }>;

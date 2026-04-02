@@ -25,7 +25,11 @@ export type ErrorCode =
   | "CONTRACT_VERSION_MISMATCH"
   | "UNAUTHORIZED"
   | "DRAFT_PROVIDER_UNAVAILABLE"
-  | "NO_THREAD_CONTEXT";
+  | "NO_THREAD_CONTEXT"
+  | "PAYMENT_REQUIRED"
+  | "SUBSCRIPTION_PAST_DUE"
+  | "TRIAL_EXPIRED"
+  | "BILLING_UNAVAILABLE";
 
 /**
  * Human-readable error messages for each error code.
@@ -63,4 +67,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     "No usable drafting provider is ready. Check your local model runtime and backend configuration.",
   NO_THREAD_CONTEXT:
     "No thread context was captured for this Slack thread. You can still improve the current draft.",
+  PAYMENT_REQUIRED:
+    "A paid ReplyMate subscription is required for this hosted feature.",
+  SUBSCRIPTION_PAST_DUE:
+    "Your ReplyMate subscription payment is past due. Update billing to continue.",
+  TRIAL_EXPIRED:
+    "Your ReplyMate trial has ended. Upgrade to continue using hosted features.",
+  BILLING_UNAVAILABLE:
+    "Billing is temporarily unavailable. Please try again shortly.",
 };

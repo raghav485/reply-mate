@@ -6,20 +6,25 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "serve": "node --import tsx src/index.ts",
+    "migrate": "tsx src/persistence/migrate.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1018.0",
+    "@aws-sdk/lib-storage": "^3.1018.0",
     "@replymate/contracts": "*",
     "cors": "^2.8.5",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

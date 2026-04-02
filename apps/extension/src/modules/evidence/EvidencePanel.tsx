@@ -149,6 +149,7 @@ export function EvidencePanel() {
     () => pendingFiles.reduce((sum, item) => sum + item.file.size, 0),
     [pendingFiles]
   );
+  const hasFailedPendingEvidence = pendingEvidence.some((item) => item.state === "failed");
 
   useEffect(() => {
     let mounted = true;
@@ -503,12 +504,14 @@ export function EvidencePanel() {
         )}
       </div>
 
-      {(error || message) && (
+      {(error || message || hasFailedPendingEvidence) && (
         <div className="mt-3">
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-xs flex items-start space-x-2">
-              <i className="ph ph-warning-circle text-lg mt-0.5"></i>
-              <span>{error}</span>
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-xs space-y-3">
+              <div className="flex items-start space-x-2">
+                <i className="ph ph-warning-circle text-lg mt-0.5"></i>
+                <span>{error}</span>
+              </div>
             </div>
           )}
           {message && !error && (

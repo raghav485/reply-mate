@@ -34,6 +34,8 @@ function canRecordAudio(): boolean {
 
 function formatConnectionState(state: ActiveSessionConnectionState): string {
   switch (state) {
+    case "idle":
+      return "Idle";
     case "connected":
       return "Connected";
     case "disconnected":
@@ -62,12 +64,16 @@ function formatStatus(status: RuntimeReadinessEntry["status"]): string {
   }
 }
 
-function formatComposerState(state: "available" | "missing" | "unknown"): string {
+function formatComposerState(
+  state: "available" | "missing" | "unknown" | "unsupported"
+): string {
   switch (state) {
     case "available":
       return "Active text box detected";
     case "missing":
       return "No active text box";
+    case "unsupported":
+      return "Unsupported page";
     case "unknown":
     default:
       return "Scanning for a text box";
@@ -194,7 +200,9 @@ export function SidePanelApp() {
                   <div 
                     className={`w-2 h-2 rounded-full ${
                       connectionState === "connected" ? "bg-app-success shadow-[0_0_5px_#4ade80]" : 
-                      connectionState === "connecting" ? "bg-app-warning" : "bg-red-500"
+                      connectionState === "connecting" ? "bg-app-warning" :
+                      connectionState === "disconnected" || connectionState === "error" ? "bg-red-500" :
+                      "bg-app-textSecondary"
                     }`}
                   />
                   <span>{formatConnectionState(connectionState)}</span>
@@ -213,10 +221,10 @@ export function SidePanelApp() {
               {connectionMessage && (
                 <div className="bg-app-panel border border-app-border rounded-lg p-3 text-sm text-app-textSecondary">
                   <p
-                    className={
-                      connectionState === "error"
-                        ? "text-app-warning"
-                        : composerAvailability === "missing"
+                      className={
+                        connectionState === "error"
+                          ? "text-app-warning"
+                        : composerAvailability === "missing" || composerAvailability === "unsupported"
                           ? "text-app-textSecondary"
                           : ""
                     }

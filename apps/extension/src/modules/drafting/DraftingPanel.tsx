@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import type {
   ActionMode,
+  AppSettings,
   ComposerSession,
   ComposerSnapshot,
   ContextScope,
@@ -271,6 +272,10 @@ function workspaceStateToFormState(
     response: state?.response ?? null,
     error: state?.error ?? null,
   } as const;
+}
+
+function resolveEffectiveCostMode(settingsSnapshot: AppSettings): CostMode {
+  return settingsSnapshot.provider.mode === "local_models" ? "local_only" : "cloud_quality";
 }
 
 export function DraftingPanel() {
@@ -707,6 +712,8 @@ export function DraftingPanel() {
     setError(null);
     setInsertNotice(null);
     const cappedEvidence = capEvidenceSummaries(evidence);
+    const settingsSnapshot = settings.get();
+    const requestCostMode = resolveEffectiveCostMode(settingsSnapshot);
 
     chrome.runtime.sendMessage(
       {
@@ -723,7 +730,8 @@ export function DraftingPanel() {
           snapshot: freshSession.snapshot,
           evidence: cappedEvidence,
           usedVoiceInput,
-          costMode,
+          costMode: requestCostMode,
+          providerConfig: settingsSnapshot.provider,
         },
       },
       (res) => {
@@ -982,9 +990,11 @@ export function DraftingPanel() {
       {(error || insertNotice || generalResponseWarnings.length > 0) && (
         <section className="space-y-3">
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-sm flex items-start space-x-2">
-              <i className="ph ph-warning-circle text-lg mt-0.5"></i>
-              <span>{error}</span>
+            <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-sm space-y-3">
+              <div className="flex items-start space-x-2">
+                <i className="ph ph-warning-circle text-lg mt-0.5"></i>
+                <span>{error}</span>
+              </div>
             </div>
           )}
           {insertNotice && (

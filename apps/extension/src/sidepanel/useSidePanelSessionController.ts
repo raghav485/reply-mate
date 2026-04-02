@@ -25,6 +25,7 @@ type ActiveTabSyncResponse = {
   tabId?: number | null;
   session?: ComposerSession | null;
   message?: string;
+  accessReason?: "unsupported_page" | "bridge_unavailable" | "no_composer";
   foundComposer?: boolean;
   staleCleared?: boolean;
 };
@@ -43,6 +44,8 @@ type UseSidePanelSessionControllerOptions = {
 const SIDEPANEL_BOOT_RELOAD_KEY = "replymate.sidepanel.bootReloaded";
 const NO_COMPOSER_MESSAGE =
   "ReplyMate could not find an active text box on this page. Focus the composer and try again.";
+const UNSUPPORTED_PAGE_MESSAGE =
+  "ReplyMate cannot run on browser internal pages like new tabs or settings. Switch to a website and focus a text box.";
 
 function isRecoverableRuntimeError(error: unknown): boolean {
   return (
@@ -135,6 +138,7 @@ export function useSidePanelSessionController(
           tabId: nextTabId,
           session: response?.session ?? null,
           message: response?.message,
+          accessReason: response?.accessReason,
           foundComposer: response?.foundComposer,
           staleCleared: response?.staleCleared,
         };
@@ -147,7 +151,12 @@ export function useSidePanelSessionController(
         await refreshRuntimeReadinessRef.current?.(nextTabId);
       }
 
-      if (response.ok === false) {
+      if (response.accessReason === "unsupported_page") {
+        clearBootReloadFlag();
+        setConnectionState("idle");
+        setComposerAvailability("unsupported");
+        setConnectionMessage(response.message || UNSUPPORTED_PAGE_MESSAGE);
+      } else if (response.ok === false) {
         clearBootReloadFlag();
         setConnectionState("disconnected");
         setComposerAvailability("unknown");
@@ -177,6 +186,7 @@ export function useSidePanelSessionController(
         tabId: nextTabId,
         session: response?.session ?? null,
         message: response?.message,
+        accessReason: response?.accessReason,
         foundComposer: response?.foundComposer,
         staleCleared: response?.staleCleared,
       };

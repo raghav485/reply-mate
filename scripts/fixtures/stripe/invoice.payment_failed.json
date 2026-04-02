@@ -1,0 +1,12 @@
+{
+  "id": "__EVENT_ID__",
+  "type": "invoice.payment_failed",
+  "created": __EVENT_CREATED__,
+  "data": {
+    "object": {
+      "id": "in_replymate_failed",
+      "customer": "__STRIPE_CUSTOMER_ID__",
+      "subscription": "__STRIPE_SUBSCRIPTION_ID__"
+    }
+  }
+}
