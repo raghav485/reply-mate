@@ -6,12 +6,14 @@ import {
   validateContextReplyCandidate,
   parseAndValidateModelDrafts,
   parseSingleDraftText,
+  selectImproveDraftCleanupCandidate,
 } from "../draftingValidation.js";
 import {
   buildCleanedDraftPrompt,
   buildContextReplyPrompt,
 } from "../draftingPrompts.js";
 import {
+  type CleanedDraftCandidate,
   type DraftGenerationInput,
 } from "../draftingTypes.js";
 
@@ -114,5 +116,70 @@ describe("modularDrafting", () => {
     const input = createDraftGenerationInput(makeRequest());
     const candidate = validateCleanedDraftCandidate("I looked into it and it seems okay.", input);
     expect(candidate.qualityScore).toBeGreaterThan(50);
+  });
+
+  it("prefers a strict safe cleanup over a best-effort candidate", () => {
+    const safeCandidate: CleanedDraftCandidate = {
+      text: "I looked into it and it seems okay.",
+      warnings: [],
+      softIssues: [],
+      suspiciousTokens: [],
+      qualityScore: 92,
+      shouldRetry: false,
+    };
+    const bestEffortCandidate: CleanedDraftCandidate = {
+      text: "i looked into it and it seems okay",
+      warnings: ["Cleaned Draft still looks rough or not fully sendable."],
+      softIssues: ["cleanup_not_sendable"],
+      suspiciousTokens: [],
+      qualityScore: 68,
+      shouldRetry: true,
+    };
+
+    const selection = selectImproveDraftCleanupCandidate({
+      modelCandidates: [bestEffortCandidate, safeCandidate],
+    });
+
+    expect(selection.cleanupWinner).toBe("model");
+    expect(selection.cleanedSelection?.text).toBe(safeCandidate.text);
+  });
+
+  it("returns a best-effort cleanup when no strict safe candidate exists", () => {
+    const bestEffortCandidate: CleanedDraftCandidate = {
+      text: "hopefully itd fixed and all the calls are receiving as they should.",
+      warnings: [
+        "Cleaned Draft still looks rough or not fully sendable.",
+        "Unclear reference to 'itd' - possible typo or missing context.",
+      ],
+      softIssues: ["cleanup_not_sendable", "cleanup_has_unresolved_tokens"],
+      suspiciousTokens: ["itd"],
+      qualityScore: 56,
+      shouldRetry: true,
+    };
+
+    const selection = selectImproveDraftCleanupCandidate({
+      modelCandidates: [bestEffortCandidate],
+    });
+
+    expect(selection.cleanupWinner).toBe("best_effort_model");
+    expect(selection.cleanedSelection?.text).toBe(bestEffortCandidate.text);
+  });
+
+  it("still rejects blocked cleanup candidates in best-effort mode", () => {
+    const blockedCandidate: CleanedDraftCandidate = {
+      text: "Carlos is checking the IVR as spam and will post an update.",
+      warnings: ["Cleaned Draft imported excluded context."],
+      softIssues: ["imported_excluded_context"],
+      suspiciousTokens: [],
+      qualityScore: 48,
+      shouldRetry: true,
+    };
+
+    const selection = selectImproveDraftCleanupCandidate({
+      modelCandidates: [blockedCandidate],
+    });
+
+    expect(selection.cleanupWinner).toBeNull();
+    expect(selection.cleanedSelection).toBeNull();
   });
 });

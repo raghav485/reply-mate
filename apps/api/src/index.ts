@@ -33,6 +33,8 @@ import { ConsoleEmailDeliveryAdapter } from "./auth/ConsoleEmailDeliveryAdapter.
 import { DeviceAuthService } from "./auth/DeviceAuthService.js";
 import { MagicLinkAuthService } from "./auth/MagicLinkAuthService.js";
 import { loadLocalEnv } from "./bootstrap/loadEnv.js";
+import { loadOrCreateLocalRuntimeToken } from "./native/runtimeAuth.js";
+import { createSensitiveEndpointMiddleware } from "./native/sensitiveHttp.js";
 import { parseMultipartFormData } from "./core/multipart.js";
 import {
   InMemoryRateLimiter,
@@ -107,6 +109,7 @@ const magicLinkAuthService = new MagicLinkAuthService(
 );
 const deviceAuthService = new DeviceAuthService(billingRepository, hostedStateRepository);
 const configuredApiToken = process.env.REPLYMATE_API_TOKEN?.trim() || "";
+let localRuntimeToken = "";
 const deploymentMode = resolveDeploymentMode();
 const authMode: AuthMode = configuredApiToken ? "required" : "optional";
 
@@ -140,6 +143,10 @@ const maintenanceTimer = setInterval(() => {
   metricsLimiter.sweep();
 }, 60_000);
 maintenanceTimer.unref();
+const requireSensitiveEndpointAccess = createSensitiveEndpointMiddleware({
+  getRuntimeToken: () => localRuntimeToken,
+  getConfiguredApiToken: () => configuredApiToken,
+});
 
 let draftingProviderStatusCache: {
   status: DraftingProviderStatus;
@@ -748,6 +755,7 @@ app.get("/v1/health", (_req, res) => {
 
 app.post(
   "/v1/settings/validate",
+  requireSensitiveEndpointAccess,
   asyncRoute(async (req, res) => {
     const body = parseSettingsValidateBody(req.body);
     const resolvedProviderConfig = await hydrateProviderConfigSecrets(
@@ -814,6 +822,7 @@ app.post(
 
 app.get(
   "/v1/settings/provider-credentials",
+  requireSensitiveEndpointAccess,
   asyncRoute(async (_req, res) => {
     res.json(await buildProviderCredentialStatusResponse(providerCredentialStore));
   })
@@ -821,6 +830,7 @@ app.get(
 
 app.put(
   "/v1/settings/provider-credentials",
+  requireSensitiveEndpointAccess,
   asyncRoute(async (req, res) => {
     const body = parseProviderCredentialUpsertRequest(req.body);
     await providerCredentialStore.writeCredential(body);
@@ -830,6 +840,7 @@ app.put(
 
 app.delete(
   "/v1/settings/provider-credentials",
+  requireSensitiveEndpointAccess,
   asyncRoute(async (req, res) => {
     const body = parseProviderCredentialDeleteRequest(req.body);
     await providerCredentialStore.deleteCredential(body);
@@ -1151,6 +1162,7 @@ app.get(
 
 app.post(
   "/v1/evidence/ingest",
+  requireSensitiveEndpointAccess,
   createRateLimitMiddleware({ limiter: evidenceLimiter, scope: "evidence_ingest" }),
   express.raw({
     type: (req) => Boolean(req.headers["content-type"]?.startsWith("multipart/form-data")),
@@ -1205,6 +1217,7 @@ app.post(
 
 app.get(
   "/v1/evidence/jobs/:jobId",
+  requireSensitiveEndpointAccess,
   asyncRoute(async (req, res) => {
     const jobId = parseEvidenceJobId(req.params);
     const account = getRequestAccount(req);
@@ -1317,6 +1330,7 @@ app.post(
 
 app.post(
   "/v1/generate",
+  requireSensitiveEndpointAccess,
   createRateLimitMiddleware({ limiter: generateLimiter, scope: "generate" }),
   asyncRoute(async (req, res) => {
     const startedAt = Date.now();
@@ -1543,12 +1557,14 @@ async function resumeHostedEvidenceJobs(): Promise<void> {
 
 async function startServer(): Promise<void> {
   await verifyHostedStartup();
+  localRuntimeToken = await loadOrCreateLocalRuntimeToken();
   const billingReadiness = getStripeBillingIntegrationReadiness();
   const credentialStorageStatus = providerCredentialStore.getStatus();
 
-  app.listen(PORT, () => {
+  app.listen(PORT, "127.0.0.1", () => {
     logger.info("server_started", {
       port: PORT,
+      host: "127.0.0.1",
       apiVersion: "v1",
       version: SERVER_VERSION,
       authMode,

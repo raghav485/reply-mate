@@ -16,6 +16,8 @@ const execFileAsync = promisify(execFile);
 const MAX_SUMMARY_CHARS = 1200;
 const MAX_TEXT_SNIPPET_CHARS = 950;
 
+type ProcessRunner = typeof execFileAsync;
+
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -90,9 +92,13 @@ async function withTempFile<T>(
   }
 }
 
-async function extractDocxText(buffer: Buffer, fileName: string): Promise<string> {
+async function extractDocxTextMacOs(
+  runner: ProcessRunner,
+  buffer: Buffer,
+  fileName: string
+): Promise<string> {
   return withTempFile(fileName, buffer, async (filePath) => {
-    const { stdout } = await execFileAsync("/usr/bin/textutil", [
+    const { stdout } = await runner("/usr/bin/textutil", [
       "-convert",
       "txt",
       "-stdout",
@@ -102,7 +108,44 @@ async function extractDocxText(buffer: Buffer, fileName: string): Promise<string
   });
 }
 
-async function extractPdfText(buffer: Buffer, fileName: string): Promise<{
+async function extractDocxTextWindows(
+  runner: ProcessRunner,
+  buffer: Buffer,
+  fileName: string
+): Promise<string> {
+  return withTempFile(fileName, buffer, async (filePath) => {
+    const script = [
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem",
+      `$path = [IO.Path]::GetFullPath('${filePath.replace(/'/g, "''")}')`,
+      "$zip = [System.IO.Compression.ZipFile]::OpenRead($path)",
+      "try {",
+      "  $entry = $zip.GetEntry('word/document.xml')",
+      "  if ($null -eq $entry) { return }",
+      "  $stream = $entry.Open()",
+      "  try {",
+      "    $reader = New-Object System.IO.StreamReader($stream)",
+      "    $xml = $reader.ReadToEnd()",
+      "  } finally { if ($reader) { $reader.Dispose() } }",
+      "} finally { $zip.Dispose() }",
+      "$text = [System.Text.RegularExpressions.Regex]::Replace($xml, '<[^>]+>', ' ')",
+      "$text = [System.Net.WebUtility]::HtmlDecode($text)",
+      "[Console]::Out.Write($text)",
+    ].join(" ");
+    const { stdout } = await runner("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      script,
+    ]);
+    return normalizeText(stdout || "");
+  });
+}
+
+async function extractPdfTextMacOs(
+  runner: ProcessRunner,
+  buffer: Buffer,
+  fileName: string
+): Promise<{
   text: string;
   pageCount: number;
 }> {
@@ -132,7 +175,7 @@ FileHandle.standardOutput.write(data)
 
     try {
       await writeFile(scriptPath, swiftSource);
-      const { stdout } = await execFileAsync("/usr/bin/swift", [scriptPath, filePath]);
+      const { stdout } = await runner("/usr/bin/swift", [scriptPath, filePath]);
       const payload = JSON.parse(String(stdout || "{}")) as {
         text?: string;
         pageCount?: number;
@@ -150,31 +193,66 @@ FileHandle.standardOutput.write(data)
   });
 }
 
+function buildHealthStatus(
+  platform: NodeJS.Platform,
+  options: {
+    imageWarning?: string;
+    runtimeType?: ParserProviderStatus["runtimeType"];
+  }
+): ParserProviderStatus {
+  const base: ParserProviderStatus = {
+    runtimeType: options.runtimeType ?? "metadata_local",
+    ready: false,
+    imageOcrAvailable: false,
+    warning:
+      options.imageWarning ||
+      "Image OCR is not configured; using metadata-only summaries for images.",
+    fallbackMode: "metadata_local",
+    recommendedModelName: "minicpm-v",
+    setupHint: "Text files work locally. Configure minicpm-v for OCR.",
+  };
+
+  if (platform === "darwin") {
+    return {
+      ...base,
+      setupHint:
+        "macOS supports local TXT/Markdown, DOCX, and text-based PDF extraction. Use minicpm-v for OCR.",
+    };
+  }
+
+  if (platform === "win32") {
+    return {
+      ...base,
+      setupHint:
+        "Windows supports local TXT/Markdown and best-effort DOCX extraction. PDF uploads fall back to metadata when strong local text extraction is unavailable.",
+    };
+  }
+
+  return {
+    ...base,
+    setupHint:
+      "This OS supports local TXT/Markdown extraction. Persistent secure storage and advanced document extraction are limited in this milestone.",
+  };
+}
+
 export class LocalDocumentParserAdapter implements DocumentParserAdapter {
   constructor(
     private readonly options: {
       imageWarning?: string;
       runtimeType?: ParserProviderStatus["runtimeType"];
+      platform?: NodeJS.Platform;
+      processRunner?: ProcessRunner;
     } = {}
   ) {}
 
   async checkHealth(): Promise<ParserProviderStatus> {
-    return {
-      runtimeType: this.options.runtimeType ?? "metadata_local",
-      ready: false,
-      imageOcrAvailable: false,
-      warning:
-        this.options.imageWarning ||
-        "Image OCR is not configured; using metadata-only summaries for images.",
-      fallbackMode: "metadata_local",
-      recommendedModelName: "minicpm-v",
-      setupHint:
-        "DOCX and text-based PDF extraction work locally. Use minicpm-v for image OCR.",
-    };
+    return buildHealthStatus(this.options.platform ?? process.platform, this.options);
   }
 
   async summarizeFile(input: EvidenceIngestRequest): Promise<EvidenceSummary> {
     const mimeType = input.mimeType.toLowerCase();
+    const platform = this.options.platform ?? process.platform;
+    const runner = this.options.processRunner ?? execFileAsync;
 
     if (mimeType === "text/plain" || mimeType === "text/markdown") {
       const raw = (await toBuffer(input.fileData)).toString("utf8");
@@ -208,7 +286,12 @@ export class LocalDocumentParserAdapter implements DocumentParserAdapter {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
       try {
-        const extractedText = await extractDocxText(await toBuffer(input.fileData), input.fileName);
+        const extractedText =
+          platform === "win32"
+            ? await extractDocxTextWindows(runner, await toBuffer(input.fileData), input.fileName)
+            : platform === "darwin"
+              ? await extractDocxTextMacOs(runner, await toBuffer(input.fileData), input.fileName)
+              : "";
 
         if (!extractedText) {
           return buildEvidenceSummary({
@@ -225,7 +308,10 @@ export class LocalDocumentParserAdapter implements DocumentParserAdapter {
           parserMode: "docx_text",
           summaryText: buildNativeTextSummary("DOCX text", input.fileName, extractedText),
           confidence: "high",
-          warnings: [],
+          warnings:
+            platform === "win32"
+              ? ["Windows DOCX extraction uses a best-effort local parser path."]
+              : [],
           extractedTextChars: extractedText.length,
         });
       } catch (error) {
@@ -242,7 +328,26 @@ export class LocalDocumentParserAdapter implements DocumentParserAdapter {
 
     if (mimeType === "application/pdf") {
       try {
-        const extracted = await extractPdfText(await toBuffer(input.fileData), input.fileName);
+        if (platform !== "darwin") {
+          return buildEvidenceSummary({
+            fileName: input.fileName,
+            parserMode: "metadata_fallback",
+            summaryText:
+              `PDF uploaded: ${input.fileName}. ReplyMate stored the file but this platform uses metadata fallback for PDF text extraction.`,
+            confidence: "low",
+            warnings: [
+              platform === "win32"
+                ? "Windows local PDF text extraction is not yet first-class in this milestone; using metadata fallback."
+                : "Local PDF text extraction is unavailable on this platform; using metadata fallback.",
+            ],
+          });
+        }
+
+        const extracted = await extractPdfTextMacOs(
+          runner,
+          await toBuffer(input.fileData),
+          input.fileName
+        );
 
         if (extracted.text.length < 80) {
           return buildEvidenceSummary({
@@ -280,28 +385,12 @@ export class LocalDocumentParserAdapter implements DocumentParserAdapter {
       }
     }
 
-    if (mimeType.startsWith("image/")) {
-      const sizeKb = Math.max(1, Math.round((await toBuffer(input.fileData)).byteLength / 1024));
-      return buildEvidenceSummary({
-        fileName: input.fileName,
-        parserMode: "metadata_fallback",
-        summaryText:
-          `Image uploaded: ${input.fileName} (${mimeType}, ${sizeKb} KB). Using metadata-only image summary for drafting context.`,
-        confidence: "low",
-        warnings: [
-          this.options.imageWarning ||
-            "Image OCR is not configured; using metadata-only summary.",
-        ],
-      });
-    }
-
     return buildEvidenceSummary({
       fileName: input.fileName,
       parserMode: "metadata_fallback",
-      summaryText:
-        `File uploaded: ${input.fileName}. Unsupported parser path used metadata-only fallback.`,
+      summaryText: `Uploaded ${input.fileName}. ReplyMate stored the file and will use metadata-only context for this format.`,
       confidence: "low",
-      warnings: ["Unsupported parser path; using metadata-only summary."],
+      warnings: ["No native parser path matched this file type; using metadata-only summary."],
     });
   }
 }

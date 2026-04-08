@@ -11,11 +11,13 @@ import {
 import { ApiClientError } from "../shared-client/ApiClient.js";
 import { EvidenceApiClient, type EvidenceIngestResponse } from "./EvidenceApiClient.js";
 import { buildEvidenceIngestFailure } from "./evidenceErrors.js";
+import { SensitiveRuntimeClient } from "./sensitiveRuntimeClient.js";
 import {
   classifyBridgeAccessError,
   classifyTabUrl,
   type SessionAccessReason,
 } from "./tabAccess.js";
+import { vaultService } from "./vaultService.js";
 import type {
   ActionMode,
   AdapterId,
@@ -90,12 +92,12 @@ type InsertExecutionResponse = {
 
 const workspaceStateStore = new WorkspaceStateStore();
 const RUNTIME_VALIDATION_CACHE_TTL_MS = 5_000;
-const GENERATE_REQUEST_TIMEOUT_MS = 120_000;
 const runtimeValidationCache = new Map<
   string,
   { expiresAt: number; result: SettingsValidationResponse }
 >();
 const runtimeValidationInFlight = new Map<string, Promise<SettingsValidationResponse>>();
+const sensitiveRuntimeClient = new SensitiveRuntimeClient();
 
 type DraftingWorkspaceStatePatch = {
   actionMode?: ActionMode;
@@ -241,12 +243,36 @@ function decodeBase64Blob(payload: string, mimeType: string): Blob {
   return new Blob([bytes], { type: mimeType || "application/octet-stream" });
 }
 
+function encodeArrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizeValidationKey(input: string): string {
   return input.trim().replace(/\/+$/, "");
+}
+
+const TRUSTED_VAULT_PATHS = new Set(["/src/options/index.html", "/src/sidepanel/index.html"]);
+
+function isTrustedVaultSender(sender: chrome.runtime.MessageSender): boolean {
+  if (!sender.url) {
+    return false;
+  }
+  try {
+    const parsed = new URL(sender.url);
+    return parsed.origin === chrome.runtime.getURL("").replace(/\/$/, "") &&
+      TRUSTED_VAULT_PATHS.has(parsed.pathname);
+  } catch {
+    return false;
+  }
 }
 
 function getRuntimeValidationCacheKey(settings: AppSettings): string {
@@ -495,7 +521,7 @@ async function ensureSessionForTab(
 }
 
 async function validateRuntimeSettingsCached(
-  settingsService: ModuleContext["settings"],
+  _settingsService: ModuleContext["settings"],
   currentSettings: AppSettings
 ): Promise<SettingsValidationResponse> {
   const cacheKey = getRuntimeValidationCacheKey(currentSettings);
@@ -511,10 +537,9 @@ async function validateRuntimeSettingsCached(
     return inFlight;
   }
 
-  const validationPromise = settingsService
+  const validationPromise = sensitiveRuntimeClient
     .validateConnection({
       baseUrl: currentSettings.backend.baseUrl,
-      token: currentSettings.backend.token,
       providerConfig: currentSettings.provider,
     })
     .then((result) => {
@@ -594,18 +619,10 @@ function resolveAttachCapability(session: ComposerSession | null): AttachCapabil
 }
 
 function buildDraftingReadiness(
-  settings: AppSettings,
+  _settings: AppSettings,
   validation: SettingsValidationResponse | null,
   validationError: string | null
 ): RuntimeReadinessEntry {
-  if (!settings.backend.baseUrl) {
-    return {
-      status: "not_configured",
-      label: "Drafting not configured",
-      detail: "ReplyMate backend URL is not configured.",
-    };
-  }
-
   if (!validation) {
     return {
       status: "unavailable",
@@ -647,18 +664,10 @@ function buildDraftingReadiness(
 }
 
 function buildEvidenceReadiness(
-  settings: AppSettings,
+  _settings: AppSettings,
   validation: SettingsValidationResponse | null,
   validationError: string | null
 ): RuntimeReadinessEntry {
-  if (!settings.backend.baseUrl) {
-    return {
-      status: "not_configured",
-      label: "Evidence OCR not configured",
-      detail: "ReplyMate backend URL is not configured.",
-    };
-  }
-
   if (!validation) {
     return {
       status: "unavailable",
@@ -790,10 +799,38 @@ async function ingestEvidenceItem(
   });
 }
 
+function createSensitiveEvidenceApiClient(baseUrl: string): EvidenceApiClient {
+  return new EvidenceApiClient({
+    get: async <T>(path: string) => {
+      const jobId = path.split("/").pop() || "";
+      return (await sensitiveRuntimeClient.getEvidenceJob({ baseUrl, jobId })) as T;
+    },
+    postMultipart: async <T>(_path: string, formData: FormData) => {
+      const file = formData.get("file");
+      if (!(file instanceof File)) {
+        throw new ApiClientError("Evidence file payload is required.", 400, "EVIDENCE_PARSE_FAILED");
+      }
+
+      const base64 = encodeArrayBufferToBase64(await file.arrayBuffer());
+      return (await sensitiveRuntimeClient.ingestEvidence({
+        baseUrl,
+        sessionId: String(formData.get("sessionId") || ""),
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        mode: (String(formData.get("mode") || "context_only") as "context_only" | "intended_attachment"),
+        mentionInReply: String(formData.get("mentionInReply") || "false") === "true",
+        fileDataBase64: base64,
+      })) as T;
+    },
+  });
+}
+
 const bootPromise = bootstrap("background");
 
 bootPromise.then(async ({ ctx, registry }) => {
   const { logger, bus, sessionStore, settings } = ctx;
+  await vaultService.initialize();
   await workspaceStateStore.load();
   syncRuntimeSettings(settings.get(), ctx);
   settings.subscribe((next) => syncRuntimeSettings(next, ctx));
@@ -972,9 +1009,12 @@ bootPromise.then(async ({ ctx, registry }) => {
       }
 
       case "VALIDATE_SETTINGS": {
-        settings
+        sensitiveRuntimeClient
           .validateConnection({
-            ...(payload.backend || {}),
+            baseUrl:
+              typeof payload?.backend?.baseUrl === "string"
+                ? payload.backend.baseUrl
+                : settings.get().backend.baseUrl,
             providerConfig: payload.providerConfig || settings.get().provider,
           })
           .then((result) => sendResponse({ ok: true, result }))
@@ -984,6 +1024,189 @@ bootPromise.then(async ({ ctx, registry }) => {
               error: error instanceof Error ? error.message : String(error),
             });
           });
+        return true;
+      }
+
+      case "GET_PROVIDER_CREDENTIAL_STATUS": {
+        sensitiveRuntimeClient
+          .getProviderCredentialStatus({
+            baseUrl:
+              typeof payload?.baseUrl === "string" ? payload.baseUrl : settings.get().backend.baseUrl,
+          })
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) => {
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        return true;
+      }
+
+      case "GET_NATIVE_RUNTIME_STATUS": {
+        sensitiveRuntimeClient
+          .getNativeRuntimeStatus({
+            baseUrl:
+              typeof payload?.baseUrl === "string" ? payload.baseUrl : settings.get().backend.baseUrl,
+          })
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) => {
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        return true;
+      }
+
+      case "SAVE_PROVIDER_CREDENTIAL": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        sensitiveRuntimeClient
+          .saveProviderCredential({
+            baseUrl:
+              typeof payload?.baseUrl === "string" ? payload.baseUrl : settings.get().backend.baseUrl,
+            target: payload.target,
+            kind: payload.kind,
+            apiKey: payload.apiKey,
+          })
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) => {
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        return true;
+      }
+
+      case "DELETE_PROVIDER_CREDENTIAL": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        sensitiveRuntimeClient
+          .deleteProviderCredential({
+            baseUrl:
+              typeof payload?.baseUrl === "string" ? payload.baseUrl : settings.get().backend.baseUrl,
+            target: payload.target,
+            kind: payload.kind,
+          })
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) => {
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        return true;
+      }
+
+      case "SETUP_VAULT_PASSKEY": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        vaultService
+          .setupWithPasskey(payload)
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) =>
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          );
+        return true;
+      }
+
+      case "SETUP_VAULT_PASSPHRASE": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        vaultService
+          .setupWithPassphrase(payload)
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) =>
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          );
+        return true;
+      }
+
+      case "UNLOCK_VAULT_PASSKEY": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        vaultService
+          .unlockWithPasskey(payload)
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) =>
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          );
+        return true;
+      }
+
+      case "UNLOCK_VAULT_PASSPHRASE": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        vaultService
+          .unlockWithPassphrase(payload)
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) =>
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          );
+        return true;
+      }
+
+      case "LOCK_VAULT": {
+        if (!isTrustedVaultSender(sender)) {
+          sendResponse({
+            ok: false,
+            error: "ReplyMate rejected this vault request from an untrusted sender.",
+          });
+          break;
+        }
+        vaultService
+          .lock()
+          .then((status) => sendResponse({ ok: true, status }))
+          .catch((error) =>
+            sendResponse({
+              ok: false,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          );
         return true;
       }
 
@@ -1360,7 +1583,9 @@ bootPromise.then(async ({ ctx, registry }) => {
               nextState.pendingEvidence ?? []
             );
             sendResponse({ success: true, accepted: true });
-            const evidenceApiClient = new EvidenceApiClient(ctx.apiClient);
+            const evidenceApiClient = createSensitiveEvidenceApiClient(
+              settings.get().backend.baseUrl
+            );
 
             void (async () => {
               for (const item of items) {
@@ -1537,9 +1762,10 @@ bootPromise.then(async ({ ctx, registry }) => {
           usedVoiceInput: request.usedVoiceInput,
         } satisfies DraftingWorkspaceStatePatch);
 
-        ctx.apiClient
-          .post<GenerateDraftResponse>("/v1/generate", request, {
-            timeoutMs: GENERATE_REQUEST_TIMEOUT_MS,
+        sensitiveRuntimeClient
+          .generateDraft({
+            baseUrl: settings.get().backend.baseUrl,
+            request,
           })
           .then((response) => {
             bus.publish({

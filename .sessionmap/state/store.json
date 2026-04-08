@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-04-02T19:25:58.868Z",
+  "generatedAt": "2026-04-04T00:05:11.373Z",
   "projectRoot": "/Users/joshuakaprielian/Downloads/Writing Assistant",
   "techStack": {
     "packageManagers": [
@@ -40,7 +40,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-04-02T19:23:45.062Z",
+        "lastModified": "2026-04-03T17:37:37.936Z",
         "techStack": [],
         "moduleBoundary": ".env.example",
         "externalDependencies": [],
@@ -164,7 +164,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-03-26T21:23:54.169Z",
+        "lastModified": "2026-04-03T17:34:33.402Z",
         "techStack": [],
         "moduleBoundary": "apps/api",
         "externalDependencies": [],
@@ -964,12 +964,12 @@
       "language": "typescript",
       "tier": 1,
       "name": "index.ts",
-      "summary": "typescript file exporting 0 symbol(s) and referencing 20 dependency path(s).",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 22 dependency path(s).",
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 1603,
-        "lastModified": "2026-04-02T19:24:03.358Z",
+        "linesOfCode": 1619,
+        "lastModified": "2026-04-03T17:30:24.252Z",
         "techStack": [],
         "moduleBoundary": "apps/api",
         "externalDependencies": [
@@ -990,11 +990,107 @@
           "./core/logger.js",
           "./core/multipart.js",
           "./core/retry.js",
+          "./native/runtimeAuth.js",
+          "./native/sensitiveHttp.js",
           "./persistence/index.js",
           "./providers/index.js",
           "./providers/requestScopedProviderConfig.js",
           "./services/HostedAccountService.js",
           "./services/HostedEvidenceService.js"
+        ]
+      }
+    },
+    {
+      "id": "directory:apps/api/src/native",
+      "type": "directory",
+      "path": "apps/api/src/native",
+      "language": "directory",
+      "tier": 3,
+      "name": "native",
+      "summary": "Directory containing project files under apps/api/src/native.",
+      "summarySource": "heuristic",
+      "exports": [],
+      "metadata": {
+        "linesOfCode": 0,
+        "lastModified": "",
+        "techStack": []
+      }
+    },
+    {
+      "id": "file:apps/api/src/native/nativeHost.ts",
+      "type": "file",
+      "path": "apps/api/src/native/nativeHost.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "nativeHost.ts",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 3 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [],
+      "metadata": {
+        "linesOfCode": 255,
+        "lastModified": "2026-04-03T17:29:33.963Z",
+        "techStack": [],
+        "moduleBoundary": "apps/api",
+        "externalDependencies": [
+          "node:process"
+        ],
+        "unresolvedImports": [
+          "../bootstrap/loadEnv.js",
+          "./runtimeAuth.js"
+        ]
+      }
+    },
+    {
+      "id": "file:apps/api/src/native/runtimeAuth.ts",
+      "type": "file",
+      "path": "apps/api/src/native/runtimeAuth.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "runtimeAuth.ts",
+      "summary": "typescript file exporting 2 symbol(s) and referencing 5 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [
+        "getLocalRuntimeSecretPath",
+        "loadOrCreateLocalRuntimeToken"
+      ],
+      "metadata": {
+        "linesOfCode": 74,
+        "lastModified": "2026-04-03T17:28:56.805Z",
+        "techStack": [],
+        "moduleBoundary": "apps/api",
+        "externalDependencies": [
+          "node:crypto",
+          "node:fs",
+          "node:fs/promises",
+          "node:os",
+          "node:path"
+        ],
+        "unresolvedImports": []
+      }
+    },
+    {
+      "id": "file:apps/api/src/native/sensitiveHttp.ts",
+      "type": "file",
+      "path": "apps/api/src/native/sensitiveHttp.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "sensitiveHttp.ts",
+      "summary": "typescript file exporting 2 symbol(s) and referencing 3 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [
+        "createSensitiveEndpointMiddleware",
+        "isLoopbackRequest"
+      ],
+      "metadata": {
+        "linesOfCode": 64,
+        "lastModified": "2026-04-03T17:30:10.529Z",
+        "techStack": [],
+        "moduleBoundary": "apps/api",
+        "externalDependencies": [
+          "express"
+        ],
+        "unresolvedImports": [
+          "../core/errors.js"
         ]
       }
     },
@@ -1553,6 +1649,29 @@
       }
     },
     {
+      "id": "file:apps/api/src/providers/__tests__/LocalDocumentParserAdapter.test.ts",
+      "type": "file",
+      "path": "apps/api/src/providers/__tests__/LocalDocumentParserAdapter.test.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "LocalDocumentParserAdapter.test.ts",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 2 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [],
+      "metadata": {
+        "linesOfCode": 47,
+        "lastModified": "2026-04-03T17:37:03.206Z",
+        "techStack": [],
+        "moduleBoundary": "apps/api",
+        "externalDependencies": [
+          "vitest"
+        ],
+        "unresolvedImports": [
+          "../LocalDocumentParserAdapter.js"
+        ]
+      }
+    },
+    {
       "id": "file:apps/api/src/providers/__tests__/OllamaLLMProviderAdapter.test.ts",
       "type": "file",
       "path": "apps/api/src/providers/__tests__/OllamaLLMProviderAdapter.test.ts",
@@ -1582,15 +1701,18 @@
       "language": "typescript",
       "tier": 1,
       "name": "providerCredentialStore.test.ts",
-      "summary": "typescript file exporting 0 symbol(s) and referencing 1 dependency path(s).",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 4 dependency path(s).",
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 69,
-        "lastModified": "2026-04-02T19:22:47.497Z",
+        "linesOfCode": 175,
+        "lastModified": "2026-04-03T17:40:05.955Z",
         "techStack": [],
         "moduleBoundary": "apps/api",
         "externalDependencies": [
+          "node:fs/promises",
+          "node:os",
+          "node:path",
           "vitest"
         ],
         "unresolvedImports": []
@@ -2119,8 +2241,8 @@
         "LocalDocumentParserAdapter"
       ],
       "metadata": {
-        "linesOfCode": 308,
-        "lastModified": "2026-03-13T23:20:34.191Z",
+        "linesOfCode": 397,
+        "lastModified": "2026-04-03T17:28:42.874Z",
         "techStack": [],
         "moduleBoundary": "apps/api",
         "externalDependencies": [
@@ -2242,20 +2364,27 @@
       "language": "typescript",
       "tier": 1,
       "name": "providerCredentialStore.ts",
-      "summary": "typescript file exporting 3 symbol(s) and referencing 3 dependency path(s).",
+      "summary": "typescript file exporting 5 symbol(s) and referencing 8 dependency path(s).",
       "summarySource": "ast",
       "exports": [
         "buildProviderCredentialStatusResponse",
+        "createProviderCredentialStore",
         "getProviderCredentialStore",
-        "hydrateProviderConfigSecrets"
+        "hydrateProviderConfigSecrets",
+        "resetProviderCredentialStoreForTests"
       ],
       "metadata": {
-        "linesOfCode": 234,
-        "lastModified": "2026-04-02T19:18:16.135Z",
+        "linesOfCode": 500,
+        "lastModified": "2026-04-03T17:27:37.969Z",
         "techStack": [],
         "moduleBoundary": "apps/api",
         "externalDependencies": [
           "node:child_process",
+          "node:crypto",
+          "node:fs",
+          "node:fs/promises",
+          "node:os",
+          "node:path",
           "node:util"
         ],
         "unresolvedImports": [
@@ -2693,7 +2822,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-04-02T18:46:20.251Z",
+        "lastModified": "2026-04-03T17:33:34.937Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [],
@@ -2712,7 +2841,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-04-02T18:46:25.359Z",
+        "lastModified": "2026-04-03T17:33:37.997Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [],
@@ -3400,12 +3529,12 @@
       "language": "typescript",
       "tier": 1,
       "name": "index.ts",
-      "summary": "typescript file exporting 0 symbol(s) and referencing 5 dependency path(s).",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 6 dependency path(s).",
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 2005,
-        "lastModified": "2026-04-02T19:17:05.574Z",
+        "linesOfCode": 2100,
+        "lastModified": "2026-04-03T17:40:33.031Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [],
@@ -3413,7 +3542,55 @@
           "../core/boot/bootstrap.js",
           "../shared-client/ApiClient.js",
           "./EvidenceApiClient.js",
-          "./evidenceErrors.js"
+          "./evidenceErrors.js",
+          "./sensitiveRuntimeClient.js"
+        ]
+      }
+    },
+    {
+      "id": "file:apps/extension/src/background/nativeHostClient.ts",
+      "type": "file",
+      "path": "apps/extension/src/background/nativeHostClient.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "nativeHostClient.ts",
+      "summary": "typescript file exporting 1 symbol(s) and referencing 1 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [
+        "NativeHostClient"
+      ],
+      "metadata": {
+        "linesOfCode": 68,
+        "lastModified": "2026-04-03T17:40:46.547Z",
+        "techStack": [],
+        "moduleBoundary": "apps/extension",
+        "externalDependencies": [],
+        "unresolvedImports": [
+          "../shared-client/ApiClient.js"
+        ]
+      }
+    },
+    {
+      "id": "file:apps/extension/src/background/sensitiveRuntimeClient.ts",
+      "type": "file",
+      "path": "apps/extension/src/background/sensitiveRuntimeClient.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "sensitiveRuntimeClient.ts",
+      "summary": "typescript file exporting 1 symbol(s) and referencing 2 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [
+        "SensitiveRuntimeClient"
+      ],
+      "metadata": {
+        "linesOfCode": 215,
+        "lastModified": "2026-04-03T17:38:41.300Z",
+        "techStack": [],
+        "moduleBoundary": "apps/extension",
+        "externalDependencies": [],
+        "unresolvedImports": [
+          "../shared-client/ApiClient.js",
+          "./nativeHostClient.js"
         ]
       }
     },
@@ -3808,8 +3985,8 @@
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 290,
-        "lastModified": "2026-04-02T19:25:36.055Z",
+        "linesOfCode": 305,
+        "lastModified": "2026-04-03T17:38:25.440Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -4097,8 +4274,8 @@
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 277,
-        "lastModified": "2026-04-02T19:21:27.494Z",
+        "linesOfCode": 286,
+        "lastModified": "2026-04-03T17:36:16.404Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -4139,18 +4316,20 @@
       "language": "typescript",
       "tier": 1,
       "name": "SettingsService.ts",
-      "summary": "typescript file exporting 1 symbol(s) and referencing 1 dependency path(s).",
+      "summary": "typescript file exporting 1 symbol(s) and referencing 2 dependency path(s).",
       "summarySource": "ast",
       "exports": [
         "SettingsServiceImpl"
       ],
       "metadata": {
-        "linesOfCode": 587,
-        "lastModified": "2026-04-02T19:25:29.699Z",
+        "linesOfCode": 600,
+        "lastModified": "2026-04-03T17:32:28.985Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [],
-        "unresolvedImports": []
+        "unresolvedImports": [
+          "../../shared/runtime.js"
+        ]
       }
     },
     {
@@ -4438,8 +4617,8 @@
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 424,
-        "lastModified": "2026-04-02T19:22:13.442Z",
+        "linesOfCode": 439,
+        "lastModified": "2026-04-03T17:38:17.322Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -4679,8 +4858,8 @@
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 241,
-        "lastModified": "2026-04-02T19:21:40.510Z",
+        "linesOfCode": 247,
+        "lastModified": "2026-04-03T17:38:10.301Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -4729,8 +4908,8 @@
         "SettingsPanel"
       ],
       "metadata": {
-        "linesOfCode": 1028,
-        "lastModified": "2026-04-02T19:20:13.078Z",
+        "linesOfCode": 1046,
+        "lastModified": "2026-04-03T17:34:44.080Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -4784,8 +4963,8 @@
       "summarySource": "ast",
       "exports": [],
       "metadata": {
-        "linesOfCode": 170,
-        "lastModified": "2026-04-02T19:22:02.566Z",
+        "linesOfCode": 185,
+        "lastModified": "2026-04-03T17:38:03.838Z",
         "techStack": [],
         "moduleBoundary": "apps/extension",
         "externalDependencies": [
@@ -5920,7 +6099,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-04-02T19:23:12.498Z",
+        "lastModified": "2026-04-03T17:34:28.895Z",
         "techStack": [],
         "moduleBoundary": "package.json",
         "externalDependencies": [],
@@ -6163,8 +6342,8 @@
         "TELEMETRY_EVENT_NAMES"
       ],
       "metadata": {
-        "linesOfCode": 149,
-        "lastModified": "2026-04-02T19:14:55.595Z",
+        "linesOfCode": 155,
+        "lastModified": "2026-04-03T17:26:13.578Z",
         "techStack": [],
         "moduleBoundary": "packages/contracts",
         "externalDependencies": [],
@@ -6260,7 +6439,7 @@
       "language": "typescript",
       "tier": 1,
       "name": "index.ts",
-      "summary": "typescript file exporting 101 symbol(s) and referencing 2 dependency path(s).",
+      "summary": "typescript file exporting 107 symbol(s) and referencing 2 dependency path(s).",
       "summarySource": "ast",
       "exports": [
         "AccountAccessState",
@@ -6338,16 +6517,22 @@
         "LocalProviderKind",
         "MessageContextItem",
         "ModelMode",
+        "NativeHostErrorResponse",
+        "NativeHostRequest",
+        "NativeHostResponse",
+        "NativeHostSuccessResponse",
         "PageMetadata",
         "ParserFallbackMode",
         "ParserProviderStatus",
         "ParserRuntimeType",
         "ProviderConfig",
         "ProviderCredentialDeleteRequest",
+        "ProviderCredentialPersistenceMode",
         "ProviderCredentialRef",
         "ProviderCredentialState",
         "ProviderCredentialStatusResponse",
         "ProviderCredentialStorageBackend",
+        "ProviderCredentialStoragePlatform",
         "ProviderCredentialTarget",
         "ProviderCredentialUpsertRequest",
         "ProviderId",
@@ -6366,8 +6551,8 @@
         "VoiceState"
       ],
       "metadata": {
-        "linesOfCode": 759,
-        "lastModified": "2026-04-02T19:14:48.494Z",
+        "linesOfCode": 883,
+        "lastModified": "2026-04-03T17:26:05.928Z",
         "techStack": [],
         "moduleBoundary": "packages/contracts",
         "externalDependencies": [],
@@ -6426,7 +6611,7 @@
       "exports": [],
       "metadata": {
         "linesOfCode": 0,
-        "lastModified": "2026-04-02T19:23:26.941Z",
+        "lastModified": "2026-04-03T17:37:34.140Z",
         "techStack": [],
         "moduleBoundary": "README.md",
         "externalDependencies": [],
@@ -6799,6 +6984,58 @@
           "../apps/api/src/persistence/db.js",
           "../apps/api/src/persistence/index.js"
         ]
+      }
+    },
+    {
+      "id": "file:scripts/register-native-host.ts",
+      "type": "file",
+      "path": "scripts/register-native-host.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "register-native-host.ts",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 7 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [],
+      "metadata": {
+        "linesOfCode": 136,
+        "lastModified": "2026-04-03T17:39:23.004Z",
+        "techStack": [],
+        "moduleBoundary": "scripts",
+        "externalDependencies": [
+          "node:child_process",
+          "node:fs",
+          "node:fs/promises",
+          "node:os",
+          "node:path",
+          "node:url",
+          "node:util"
+        ],
+        "unresolvedImports": []
+      }
+    },
+    {
+      "id": "file:scripts/unregister-native-host.ts",
+      "type": "file",
+      "path": "scripts/unregister-native-host.ts",
+      "language": "typescript",
+      "tier": 1,
+      "name": "unregister-native-host.ts",
+      "summary": "typescript file exporting 0 symbol(s) and referencing 5 dependency path(s).",
+      "summarySource": "ast",
+      "exports": [],
+      "metadata": {
+        "linesOfCode": 49,
+        "lastModified": "2026-04-03T17:34:23.926Z",
+        "techStack": [],
+        "moduleBoundary": "scripts",
+        "externalDependencies": [
+          "node:child_process",
+          "node:fs/promises",
+          "node:os",
+          "node:path",
+          "node:util"
+        ],
+        "unresolvedImports": []
       }
     },
     {
@@ -7492,6 +7729,484 @@
     }
   ],
   "sessions": [
+    {
+      "id": "c6f8ca72-78d5-453f-836a-cc115c8c2f8e",
+      "startedAt": "2026-04-03T23:31:34.862Z",
+      "endedAt": "2026-04-03T23:31:34.862Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775259094645-442395955a9f2.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "1549f81f-6de2-4a8a-9537-f88a418a9f63"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "7f124bfc-a317-45d7-a68a-f4c448cf7f02",
+      "startedAt": "2026-04-03T23:24:42.443Z",
+      "endedAt": "2026-04-03T23:24:42.443Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775258682250-fcea112032f018.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "0ce1daa8-66e5-442a-bff5-be8632b60487"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "f6eff128-0df7-4e59-9cd8-00881149bf13",
+      "startedAt": "2026-04-03T20:58:09.561Z",
+      "endedAt": "2026-04-03T20:58:09.561Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775249889383-c2719cc489452.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "b6f75e43-d7ae-43b3-883c-b4b661376252"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "e5b8f366-bfeb-4bf7-af16-08e1aeaa00f6",
+      "startedAt": "2026-04-03T17:40:23.716Z",
+      "endedAt": "2026-04-03T17:41:04.109Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/extension/src/background/index.ts",
+        "apps/extension/src/background/nativeHostClient.ts",
+        "apps/extension/vite.config.ts.timestamp-1775238051024-de0fb98a9b042.mjs",
+        "apps/extension/vite.config.ts.timestamp-1775238060389-8f254f0b3f7b28.mjs",
+        "apps/extension/vite.config.ts.timestamp-1775238063972-1b938b35e53c38.mjs"
+      ],
+      "touchedModules": [
+        "apps/extension"
+      ],
+      "changeSets": [
+        "1adf9290-e1f8-4130-aa2e-ff946705eb95",
+        "9be471ca-311a-439f-9385-82eb4cf3970b",
+        "9cedd0f5-263d-4a6c-828b-0fbfb9511f93",
+        "b99ad0ca-e240-470e-bd60-3e82472276a1",
+        "c3430891-37fa-48c6-a1fd-9aa79d6ae188",
+        "ca8baa2b-9b21-4ca8-946e-7ae0d85689a7",
+        "d58becc0-ec9c-43d7-86d6-8ca2bfd48d48"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "92d1ad95-9cc7-48e1-8b7f-b028a4b1bc5c",
+      "startedAt": "2026-04-03T17:40:02.365Z",
+      "endedAt": "2026-04-03T17:40:05.955Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/api/src/providers/__tests__/providerCredentialStore.test.ts"
+      ],
+      "touchedModules": [
+        "apps/api"
+      ],
+      "changeSets": [
+        "2ec9fe11-19b4-4293-a3c0-e3a81d2ce811",
+        "96b4008f-6b28-4f69-bc0a-03dbe35adc38"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "ceb33898-fce9-419f-9a12-1e31fc600b93",
+      "startedAt": "2026-04-03T17:39:41.314Z",
+      "endedAt": "2026-04-03T17:39:41.314Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775237981022-db3720c06ba328.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "b2b31f59-22cd-47a6-adbc-367dc20d51d8"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "c84fd232-05bb-4b64-ae70-7b69322e59a3",
+      "startedAt": "2026-04-03T17:39:23.066Z",
+      "endedAt": "2026-04-03T17:39:23.066Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "scripts/register-native-host.ts"
+      ],
+      "touchedModules": [
+        "scripts"
+      ],
+      "changeSets": [
+        "3aa56770-505a-4005-8dae-36977eb8fe0c"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "e483d259-cc8a-412d-b599-6b67013b4be1",
+      "startedAt": "2026-04-03T17:38:56.099Z",
+      "endedAt": "2026-04-03T17:38:59.844Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/api/src/providers/__tests__/providerCredentialStore.test.ts"
+      ],
+      "touchedModules": [
+        "apps/api"
+      ],
+      "changeSets": [
+        "53e3e49d-0874-4147-bc48-5ccf9c70e167",
+        "debb246b-2ffa-4050-9d72-f78725ed4a1f"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "810f1cce-629f-47ad-a170-92a90cfed5da",
+      "startedAt": "2026-04-03T17:38:03.899Z",
+      "endedAt": "2026-04-03T17:38:41.354Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/extension/src/background/sensitiveRuntimeClient.ts",
+        "apps/extension/src/core/registry/__tests__/ModuleRegistry.test.ts",
+        "apps/extension/src/modules/drafting/__tests__/DraftingPanel.test.tsx",
+        "apps/extension/src/modules/settings/__tests__/SettingsPanel.test.tsx",
+        "apps/extension/src/modules/telemetry/__tests__/index.test.ts"
+      ],
+      "touchedModules": [
+        "apps/extension"
+      ],
+      "changeSets": [
+        "0ee1e928-a11a-4c1e-b677-f33936a9b4be",
+        "6ea4ee94-41a4-4eb9-9aa6-bd7ee7ce3aef",
+        "70a96e27-a9e9-4970-a1b2-dd46190a9538",
+        "7d33d05a-4389-4c02-b3b8-69c3ee88224f",
+        "9dde6e7c-083d-4773-8113-cb7412637d79"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "a57b9d16-4cd9-4114-aa01-9a1837ba6df5",
+      "startedAt": "2026-04-03T17:37:37.935Z",
+      "endedAt": "2026-04-03T17:37:37.935Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        ".env.example"
+      ],
+      "touchedModules": [
+        ".env.example"
+      ],
+      "changeSets": [
+        "cb40fc44-b08a-49c7-b5cf-c3e693ff982a"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "391eeda2-2478-4d9d-adf0-fba88a5970d7",
+      "startedAt": "2026-04-03T17:37:34.140Z",
+      "endedAt": "2026-04-03T17:37:34.140Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "README.md"
+      ],
+      "touchedModules": [
+        "README.md"
+      ],
+      "changeSets": [
+        "ab8ec980-47c2-4d59-b803-24129f41d744"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "b405fe60-11a5-4baf-b114-58a2f664b649",
+      "startedAt": "2026-04-03T17:37:20.881Z",
+      "endedAt": "2026-04-03T17:37:20.881Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "scripts/register-native-host.ts"
+      ],
+      "touchedModules": [
+        "scripts"
+      ],
+      "changeSets": [
+        "26bdfe80-f67f-4cd8-b1bc-7dce069a5cdf"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "ee2733f2-6f52-4bb3-aa18-98b8c3ebfa5c",
+      "startedAt": "2026-04-03T17:36:26.051Z",
+      "endedAt": "2026-04-03T17:37:03.218Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/api/src/providers/__tests__/LocalDocumentParserAdapter.test.ts",
+        "apps/api/src/providers/__tests__/providerCredentialStore.test.ts"
+      ],
+      "touchedModules": [
+        "apps/api"
+      ],
+      "changeSets": [
+        "4fc6868c-ca9d-46ec-b3bd-c5cb9d767402",
+        "6620e501-75a0-4a2d-97da-91ecbe44145e",
+        "c72a1e0e-88fc-45c0-87ed-99671ce17d01"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "ec788f2e-ee2d-40fd-923a-5c17357a97e4",
+      "startedAt": "2026-04-03T17:34:44.080Z",
+      "endedAt": "2026-04-03T17:36:16.466Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/extension/src/core/settings/__tests__/SettingsService.test.ts",
+        "apps/extension/src/modules/settings/SettingsPanel.tsx"
+      ],
+      "touchedModules": [
+        "apps/extension"
+      ],
+      "changeSets": [
+        "888de2e3-3fc9-460e-a02b-c65be54802a2",
+        "94b93660-3a34-4308-9933-b9d8c30ac339",
+        "a15f742c-86d8-4039-baf2-93368df182ec"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "4b184b59-18ed-4256-b62a-93bb71fe6b5e",
+      "startedAt": "2026-04-03T17:34:33.402Z",
+      "endedAt": "2026-04-03T17:34:33.402Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/api/package.json"
+      ],
+      "touchedModules": [
+        "apps/api"
+      ],
+      "changeSets": [
+        "2cd09cb1-8b96-4ad3-8258-8e5d90f7e753"
+      ],
+      "impactedDependents": [
+        ".env.example",
+        ".gitignore",
+        ".vscode",
+        "AGENTS.md",
+        "PRD_Context_Aware_Reply_Assistant_MVP_v1.3.md",
+        "README.md",
+        "TRD_Context_Aware_Reply_Assistant_MVP_v1.3.md",
+        "apps/api",
+        "apps/extension",
+        "apps/web",
+        "docs/agent",
+        "package-lock.json",
+        "package.json",
+        "packages/contracts",
+        "scripts",
+        "scripts/fixtures",
+        "tsconfig.base.json"
+      ]
+    },
+    {
+      "id": "28bf2307-28e1-4d64-881d-e3db5996cc22",
+      "startedAt": "2026-04-03T17:34:28.895Z",
+      "endedAt": "2026-04-03T17:34:28.895Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "package.json"
+      ],
+      "touchedModules": [
+        "package.json"
+      ],
+      "changeSets": [
+        "0ad47855-559b-423b-aa02-fcf3526dcf85"
+      ],
+      "impactedDependents": [
+        ".env.example",
+        ".gitignore",
+        ".vscode",
+        "AGENTS.md",
+        "PRD_Context_Aware_Reply_Assistant_MVP_v1.3.md",
+        "README.md",
+        "TRD_Context_Aware_Reply_Assistant_MVP_v1.3.md",
+        "apps/api",
+        "apps/extension",
+        "apps/web",
+        "docs/agent",
+        "package-lock.json",
+        "packages/contracts",
+        "scripts",
+        "scripts/fixtures",
+        "tsconfig.base.json"
+      ]
+    },
+    {
+      "id": "3755febc-de17-45e9-b84a-bd75d43dd89d",
+      "startedAt": "2026-04-03T17:34:12.974Z",
+      "endedAt": "2026-04-03T17:34:23.937Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "scripts/register-native-host.ts",
+        "scripts/unregister-native-host.ts"
+      ],
+      "touchedModules": [
+        "scripts"
+      ],
+      "changeSets": [
+        "aa892dd0-d2ee-45b2-922b-d57e32d206a5",
+        "d4e5a3d9-a8e0-40bb-8fd2-2f5be1420367"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "87900d23-5bcd-4e7a-8bed-0e132425b136",
+      "startedAt": "2026-04-03T17:31:28.002Z",
+      "endedAt": "2026-04-03T17:33:37.997Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/extension/manifest.json",
+        "apps/extension/manifest.store.json",
+        "apps/extension/src/background/index.ts",
+        "apps/extension/src/background/nativeHostClient.ts",
+        "apps/extension/src/background/sensitiveRuntimeClient.ts",
+        "apps/extension/src/core/settings/SettingsService.ts"
+      ],
+      "touchedModules": [
+        "apps/extension"
+      ],
+      "changeSets": [
+        "0dc52bdc-c589-4dc9-ba09-d56ca5a1cfd0",
+        "1b7ecb62-5ead-4ea1-b3ce-130c8fc02cb9",
+        "402ccf17-e898-4475-80a5-be76f842d79f",
+        "49172ea6-5c31-4a78-a0ff-ace80ba76075",
+        "4f4ce50b-c564-4f2f-ad1b-3d6388495068",
+        "52f7d632-5b2f-4750-9a61-9e638523a674",
+        "6d5375b8-f062-4f58-827e-9523609d854d",
+        "dbdc26c2-7240-4740-9e52-390213b8b8ca",
+        "df26b68f-90a3-488f-862b-f91ce3b9c7a2",
+        "e1cc7859-441e-45ea-aea3-c0df97494ec9",
+        "e4d41c5f-897e-4d19-8caa-5ed4a25d89d0",
+        "f394fa0b-572c-4611-895e-5f68146264c6"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "379739dc-f9a1-4bdf-80fa-7390fe5bc12d",
+      "startedAt": "2026-04-03T17:26:25.878Z",
+      "endedAt": "2026-04-03T17:30:24.252Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "apps/api/src/index.ts",
+        "apps/api/src/native/nativeHost.ts",
+        "apps/api/src/native/runtimeAuth.ts",
+        "apps/api/src/native/sensitiveHttp.ts",
+        "apps/api/src/providers/LocalDocumentParserAdapter.ts",
+        "apps/api/src/providers/providerCredentialStore.ts"
+      ],
+      "touchedModules": [
+        "apps/api"
+      ],
+      "changeSets": [
+        "07c30737-b94f-4486-9ab7-da3a7683aad4",
+        "07d16cb2-5041-4d81-acce-7b033814777b",
+        "1f769963-939e-496c-aaf2-a470cdbb6cc8",
+        "2a944a88-7554-4291-aeb1-6ca96b0a5967",
+        "5dd02be3-eebb-47d3-9b4b-3429f82fcf19",
+        "9440686e-ce80-4a52-8b39-af4ecf45d982",
+        "c45bf518-5676-41cc-9f4b-54a6d3f2ad16",
+        "cfec0c27-bac9-495a-8ed5-f7da22b15293",
+        "de8a6993-85ff-4f2a-8329-9a5cd0c1e9a0"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "6b44bdfb-c05d-4677-976e-7b4a427e30f8",
+      "startedAt": "2026-04-03T17:26:05.932Z",
+      "endedAt": "2026-04-03T17:26:13.578Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.7,
+      "touchedPaths": [
+        "packages/contracts/src/index.ts",
+        "packages/contracts/src/types/index.ts"
+      ],
+      "touchedModules": [
+        "packages/contracts"
+      ],
+      "changeSets": [
+        "32247aaa-2f3d-490a-96da-fda43ef67c08",
+        "dba2fcc1-c737-49ff-8e9a-e53fb0b6d131"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "d0f80ac4-3de7-49ed-bf53-a9022591744b",
+      "startedAt": "2026-04-02T22:33:48.512Z",
+      "endedAt": "2026-04-02T22:33:48.512Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775169228309-d3e67659f5e878.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "0b33d2b4-f691-44a9-99c2-b7fa2d2046dc"
+      ],
+      "impactedDependents": []
+    },
+    {
+      "id": "c7efbdfc-73fe-4a72-8020-3848ab1de02d",
+      "startedAt": "2026-04-02T20:57:06.901Z",
+      "endedAt": "2026-04-02T20:57:06.901Z",
+      "actor": "agent",
+      "source": "auto-daemon",
+      "confidence": 0.45,
+      "touchedPaths": [
+        "apps/extension/vite.config.ts.timestamp-1775163426739-6e9c1a050a4ff8.mjs"
+      ],
+      "touchedModules": [],
+      "changeSets": [
+        "112a4aeb-0232-433a-a466-9941b69906ee"
+      ],
+      "impactedDependents": []
+    },
     {
       "id": "4a987d31-8c02-4bcd-87e0-d12a41399173",
       "startedAt": "2026-04-02T19:24:57.868Z",
@@ -8332,6 +9047,914 @@
     }
   ],
   "changeSets": [
+    {
+      "id": "1549f81f-6de2-4a8a-9537-f88a418a9f63",
+      "startedAt": "2026-04-03T23:31:34.862Z",
+      "endedAt": "2026-04-03T23:31:34.862Z",
+      "events": [
+        {
+          "id": "d921a110-73e7-49c2-a8af-db7fd89c7d39",
+          "ts": "2026-04-03T23:31:34.862Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775259094645-442395955a9f2.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "0ce1daa8-66e5-442a-bff5-be8632b60487",
+      "startedAt": "2026-04-03T23:24:42.443Z",
+      "endedAt": "2026-04-03T23:24:42.443Z",
+      "events": [
+        {
+          "id": "fd5528aa-e391-4332-8624-f85cd2ab76be",
+          "ts": "2026-04-03T23:24:42.443Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775258682250-fcea112032f018.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "b6f75e43-d7ae-43b3-883c-b4b661376252",
+      "startedAt": "2026-04-03T20:58:09.561Z",
+      "endedAt": "2026-04-03T20:58:09.561Z",
+      "events": [
+        {
+          "id": "26a31170-2b42-484d-af72-9cfb2d527b92",
+          "ts": "2026-04-03T20:58:09.561Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775249889383-c2719cc489452.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "ca8baa2b-9b21-4ca8-946e-7ae0d85689a7",
+      "startedAt": "2026-04-03T17:41:04.109Z",
+      "endedAt": "2026-04-03T17:41:04.109Z",
+      "events": [
+        {
+          "id": "2abc9ef2-ca34-4e8f-bfdd-f8288fcc97f9",
+          "ts": "2026-04-03T17:41:04.109Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775238063972-1b938b35e53c38.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "c3430891-37fa-48c6-a1fd-9aa79d6ae188",
+      "startedAt": "2026-04-03T17:41:00.542Z",
+      "endedAt": "2026-04-03T17:41:00.542Z",
+      "events": [
+        {
+          "id": "89c4d66b-f8db-44f0-8d85-28c12bb3c3e2",
+          "ts": "2026-04-03T17:41:00.542Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775238060389-8f254f0b3f7b28.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "1adf9290-e1f8-4130-aa2e-ff946705eb95",
+      "startedAt": "2026-04-03T17:40:51.186Z",
+      "endedAt": "2026-04-03T17:40:51.186Z",
+      "events": [
+        {
+          "id": "af00d963-49bf-4475-b25d-ec5d50be20ad",
+          "ts": "2026-04-03T17:40:51.186Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775238051024-de0fb98a9b042.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "9cedd0f5-263d-4a6c-828b-0fbfb9511f93",
+      "startedAt": "2026-04-03T17:40:46.559Z",
+      "endedAt": "2026-04-03T17:40:46.559Z",
+      "events": [
+        {
+          "id": "1ae9da8f-7a4f-4a1a-a1f9-fc2bb874a1e1",
+          "ts": "2026-04-03T17:40:46.559Z",
+          "path": "apps/extension/src/background/nativeHostClient.ts",
+          "op": "add",
+          "bytesChanged": 1803
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "b99ad0ca-e240-470e-bd60-3e82472276a1",
+      "startedAt": "2026-04-03T17:40:36.000Z",
+      "endedAt": "2026-04-03T17:40:36.000Z",
+      "events": [
+        {
+          "id": "fb1f9cc6-d3b3-43ff-a507-533bda2989cc",
+          "ts": "2026-04-03T17:40:36.000Z",
+          "path": "apps/extension/src/background/nativeHostClient.ts",
+          "op": "unlink",
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "9be471ca-311a-439f-9385-82eb4cf3970b",
+      "startedAt": "2026-04-03T17:40:33.031Z",
+      "endedAt": "2026-04-03T17:40:33.031Z",
+      "events": [
+        {
+          "id": "39bfd480-5d5d-46dd-84c0-85ae5222af67",
+          "ts": "2026-04-03T17:40:33.031Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 65824,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "d58becc0-ec9c-43d7-86d6-8ca2bfd48d48",
+      "startedAt": "2026-04-03T17:40:23.716Z",
+      "endedAt": "2026-04-03T17:40:23.716Z",
+      "events": [
+        {
+          "id": "ead9ec84-0df5-4cfc-8428-76314af589fa",
+          "ts": "2026-04-03T17:40:23.716Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 65760,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "96b4008f-6b28-4f69-bc0a-03dbe35adc38",
+      "startedAt": "2026-04-03T17:40:05.955Z",
+      "endedAt": "2026-04-03T17:40:05.955Z",
+      "events": [
+        {
+          "id": "ba492b46-fa61-4427-9e8a-6252b91f6dfb",
+          "ts": "2026-04-03T17:40:05.955Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "change",
+          "bytesChanged": 5456,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "2ec9fe11-19b4-4293-a3c0-e3a81d2ce811",
+      "startedAt": "2026-04-03T17:40:02.365Z",
+      "endedAt": "2026-04-03T17:40:02.365Z",
+      "events": [
+        {
+          "id": "78f7c799-defe-481d-b5f4-d8ccd3c81530",
+          "ts": "2026-04-03T17:40:02.365Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "change",
+          "bytesChanged": 5449,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "b2b31f59-22cd-47a6-adbc-367dc20d51d8",
+      "startedAt": "2026-04-03T17:39:41.314Z",
+      "endedAt": "2026-04-03T17:39:41.314Z",
+      "events": [
+        {
+          "id": "30149a37-c604-4036-8518-b2523054f349",
+          "ts": "2026-04-03T17:39:41.314Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775237981022-db3720c06ba328.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "3aa56770-505a-4005-8dae-36977eb8fe0c",
+      "startedAt": "2026-04-03T17:39:23.066Z",
+      "endedAt": "2026-04-03T17:39:23.066Z",
+      "events": [
+        {
+          "id": "207187ee-8934-416d-9e58-74c3a353da45",
+          "ts": "2026-04-03T17:39:23.066Z",
+          "path": "scripts/register-native-host.ts",
+          "op": "change",
+          "bytesChanged": 3907,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "53e3e49d-0874-4147-bc48-5ccf9c70e167",
+      "startedAt": "2026-04-03T17:38:59.844Z",
+      "endedAt": "2026-04-03T17:38:59.844Z",
+      "events": [
+        {
+          "id": "6110d807-deb5-4391-828f-a8e01ccfe574",
+          "ts": "2026-04-03T17:38:59.844Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "change",
+          "bytesChanged": 5340,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "debb246b-2ffa-4050-9d72-f78725ed4a1f",
+      "startedAt": "2026-04-03T17:38:56.099Z",
+      "endedAt": "2026-04-03T17:38:56.099Z",
+      "events": [
+        {
+          "id": "c79ea40c-8d1a-4eec-bdc4-254727999082",
+          "ts": "2026-04-03T17:38:56.099Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "change",
+          "bytesChanged": 5336,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "0ee1e928-a11a-4c1e-b677-f33936a9b4be",
+      "startedAt": "2026-04-03T17:38:41.354Z",
+      "endedAt": "2026-04-03T17:38:41.354Z",
+      "events": [
+        {
+          "id": "2b660a0f-b2d0-450a-9ac3-79987b17da67",
+          "ts": "2026-04-03T17:38:41.354Z",
+          "path": "apps/extension/src/background/sensitiveRuntimeClient.ts",
+          "op": "change",
+          "bytesChanged": 6152,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "70a96e27-a9e9-4970-a1b2-dd46190a9538",
+      "startedAt": "2026-04-03T17:38:25.440Z",
+      "endedAt": "2026-04-03T17:38:25.440Z",
+      "events": [
+        {
+          "id": "0c2f7894-7111-4584-a71d-f9e58324803a",
+          "ts": "2026-04-03T17:38:25.440Z",
+          "path": "apps/extension/src/core/registry/__tests__/ModuleRegistry.test.ts",
+          "op": "change",
+          "bytesChanged": 8975,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "7d33d05a-4389-4c02-b3b8-69c3ee88224f",
+      "startedAt": "2026-04-03T17:38:17.321Z",
+      "endedAt": "2026-04-03T17:38:17.321Z",
+      "events": [
+        {
+          "id": "cdc29218-bf5c-40c5-a3df-aadabc7e8fac",
+          "ts": "2026-04-03T17:38:17.321Z",
+          "path": "apps/extension/src/modules/drafting/__tests__/DraftingPanel.test.tsx",
+          "op": "change",
+          "bytesChanged": 12671,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "6ea4ee94-41a4-4eb9-9aa6-bd7ee7ce3aef",
+      "startedAt": "2026-04-03T17:38:10.301Z",
+      "endedAt": "2026-04-03T17:38:10.301Z",
+      "events": [
+        {
+          "id": "b582940d-d55f-429e-b966-fa1570f016ac",
+          "ts": "2026-04-03T17:38:10.301Z",
+          "path": "apps/extension/src/modules/settings/__tests__/SettingsPanel.test.tsx",
+          "op": "change",
+          "bytesChanged": 6812,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "9dde6e7c-083d-4773-8113-cb7412637d79",
+      "startedAt": "2026-04-03T17:38:03.899Z",
+      "endedAt": "2026-04-03T17:38:03.899Z",
+      "events": [
+        {
+          "id": "c0663f9d-7300-4d82-b73a-9378e37cc5f5",
+          "ts": "2026-04-03T17:38:03.899Z",
+          "path": "apps/extension/src/modules/telemetry/__tests__/index.test.ts",
+          "op": "change",
+          "bytesChanged": 5602,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "cb40fc44-b08a-49c7-b5cf-c3e693ff982a",
+      "startedAt": "2026-04-03T17:37:37.935Z",
+      "endedAt": "2026-04-03T17:37:37.935Z",
+      "events": [
+        {
+          "id": "821b7977-0258-4e40-815c-ba97b4041570",
+          "ts": "2026-04-03T17:37:37.935Z",
+          "path": ".env.example",
+          "op": "change",
+          "bytesChanged": 2331,
+          "language": "unknown"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "ab8ec980-47c2-4d59-b803-24129f41d744",
+      "startedAt": "2026-04-03T17:37:34.140Z",
+      "endedAt": "2026-04-03T17:37:34.140Z",
+      "events": [
+        {
+          "id": "c962a2c7-e592-406d-a9a5-0c8fb81814c2",
+          "ts": "2026-04-03T17:37:34.140Z",
+          "path": "README.md",
+          "op": "change",
+          "bytesChanged": 5668,
+          "language": "markdown"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "26bdfe80-f67f-4cd8-b1bc-7dce069a5cdf",
+      "startedAt": "2026-04-03T17:37:20.881Z",
+      "endedAt": "2026-04-03T17:37:20.881Z",
+      "events": [
+        {
+          "id": "1eea0b99-f957-4709-b426-5c106db04ac0",
+          "ts": "2026-04-03T17:37:20.881Z",
+          "path": "scripts/register-native-host.ts",
+          "op": "change",
+          "bytesChanged": 3936,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "4fc6868c-ca9d-46ec-b3bd-c5cb9d767402",
+      "startedAt": "2026-04-03T17:37:03.218Z",
+      "endedAt": "2026-04-03T17:37:03.218Z",
+      "events": [
+        {
+          "id": "7cadb498-9e83-4af3-9c75-12dec673cb6c",
+          "ts": "2026-04-03T17:37:03.218Z",
+          "path": "apps/api/src/providers/__tests__/LocalDocumentParserAdapter.test.ts",
+          "op": "add",
+          "bytesChanged": 1656
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "6620e501-75a0-4a2d-97da-91ecbe44145e",
+      "startedAt": "2026-04-03T17:36:50.764Z",
+      "endedAt": "2026-04-03T17:36:50.764Z",
+      "events": [
+        {
+          "id": "3c11bff7-e40f-47db-a4e1-bb2fc0ed97ba",
+          "ts": "2026-04-03T17:36:50.764Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "add",
+          "bytesChanged": 4692
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "c72a1e0e-88fc-45c0-87ed-99671ce17d01",
+      "startedAt": "2026-04-03T17:36:26.051Z",
+      "endedAt": "2026-04-03T17:36:26.051Z",
+      "events": [
+        {
+          "id": "ff6ae90a-e556-4ea9-ba82-6f14a0c3c79e",
+          "ts": "2026-04-03T17:36:26.051Z",
+          "path": "apps/api/src/providers/__tests__/providerCredentialStore.test.ts",
+          "op": "unlink",
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "888de2e3-3fc9-460e-a02b-c65be54802a2",
+      "startedAt": "2026-04-03T17:36:16.466Z",
+      "endedAt": "2026-04-03T17:36:16.466Z",
+      "events": [
+        {
+          "id": "5a0874e6-423f-4242-866c-e8c723958acd",
+          "ts": "2026-04-03T17:36:16.466Z",
+          "path": "apps/extension/src/core/settings/__tests__/SettingsService.test.ts",
+          "op": "add",
+          "bytesChanged": 8021
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "94b93660-3a34-4308-9933-b9d8c30ac339",
+      "startedAt": "2026-04-03T17:35:35.871Z",
+      "endedAt": "2026-04-03T17:35:35.871Z",
+      "events": [
+        {
+          "id": "a45771a9-ae46-44c4-937f-5092d1a52c07",
+          "ts": "2026-04-03T17:35:35.871Z",
+          "path": "apps/extension/src/core/settings/__tests__/SettingsService.test.ts",
+          "op": "unlink",
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "a15f742c-86d8-4039-baf2-93368df182ec",
+      "startedAt": "2026-04-03T17:34:44.080Z",
+      "endedAt": "2026-04-03T17:34:44.080Z",
+      "events": [
+        {
+          "id": "931281eb-43fd-4c5e-8b0c-28602437fbda",
+          "ts": "2026-04-03T17:34:44.080Z",
+          "path": "apps/extension/src/modules/settings/SettingsPanel.tsx",
+          "op": "change",
+          "bytesChanged": 38692,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "2cd09cb1-8b96-4ad3-8258-8e5d90f7e753",
+      "startedAt": "2026-04-03T17:34:33.402Z",
+      "endedAt": "2026-04-03T17:34:33.402Z",
+      "events": [
+        {
+          "id": "a7270f94-dc00-437f-8f22-83f86d0cee7a",
+          "ts": "2026-04-03T17:34:33.402Z",
+          "path": "apps/api/package.json",
+          "op": "change",
+          "bytesChanged": 937,
+          "language": "json"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "0ad47855-559b-423b-aa02-fcf3526dcf85",
+      "startedAt": "2026-04-03T17:34:28.895Z",
+      "endedAt": "2026-04-03T17:34:28.895Z",
+      "events": [
+        {
+          "id": "5685b703-3d24-4f44-bdf5-ca969731682e",
+          "ts": "2026-04-03T17:34:28.895Z",
+          "path": "package.json",
+          "op": "change",
+          "bytesChanged": 1147,
+          "language": "json"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "aa892dd0-d2ee-45b2-922b-d57e32d206a5",
+      "startedAt": "2026-04-03T17:34:23.937Z",
+      "endedAt": "2026-04-03T17:34:23.937Z",
+      "events": [
+        {
+          "id": "bd764dd8-dd0e-4e47-b050-0b31c1c71ee7",
+          "ts": "2026-04-03T17:34:23.937Z",
+          "path": "scripts/unregister-native-host.ts",
+          "op": "add",
+          "bytesChanged": 1443
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "d4e5a3d9-a8e0-40bb-8fd2-2f5be1420367",
+      "startedAt": "2026-04-03T17:34:12.974Z",
+      "endedAt": "2026-04-03T17:34:12.974Z",
+      "events": [
+        {
+          "id": "a205cb3a-27b6-4b47-849f-300bd8782dcc",
+          "ts": "2026-04-03T17:34:12.974Z",
+          "path": "scripts/register-native-host.ts",
+          "op": "add",
+          "bytesChanged": 3897
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "e4d41c5f-897e-4d19-8caa-5ed4a25d89d0",
+      "startedAt": "2026-04-03T17:33:37.997Z",
+      "endedAt": "2026-04-03T17:33:37.997Z",
+      "events": [
+        {
+          "id": "63f0c00c-c452-4a8e-ae67-8fc25405154d",
+          "ts": "2026-04-03T17:33:37.997Z",
+          "path": "apps/extension/manifest.store.json",
+          "op": "change",
+          "bytesChanged": 1424,
+          "language": "json"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "402ccf17-e898-4475-80a5-be76f842d79f",
+      "startedAt": "2026-04-03T17:33:34.937Z",
+      "endedAt": "2026-04-03T17:33:34.937Z",
+      "events": [
+        {
+          "id": "4d0b98f8-94ac-4fe8-8c6a-b3a506031613",
+          "ts": "2026-04-03T17:33:34.937Z",
+          "path": "apps/extension/manifest.json",
+          "op": "change",
+          "bytesChanged": 1559,
+          "language": "json"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "df26b68f-90a3-488f-862b-f91ce3b9c7a2",
+      "startedAt": "2026-04-03T17:33:27.445Z",
+      "endedAt": "2026-04-03T17:33:27.445Z",
+      "events": [
+        {
+          "id": "8583f504-b9ef-4969-b220-ccb8659e6428",
+          "ts": "2026-04-03T17:33:27.445Z",
+          "path": "apps/extension/src/background/sensitiveRuntimeClient.ts",
+          "op": "change",
+          "bytesChanged": 6145,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "49172ea6-5c31-4a78-a0ff-ace80ba76075",
+      "startedAt": "2026-04-03T17:33:16.913Z",
+      "endedAt": "2026-04-03T17:33:16.913Z",
+      "events": [
+        {
+          "id": "e670dc61-d470-4af3-812f-c8082a0dbbd0",
+          "ts": "2026-04-03T17:33:16.913Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 65805,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "6d5375b8-f062-4f58-827e-9523609d854d",
+      "startedAt": "2026-04-03T17:33:11.564Z",
+      "endedAt": "2026-04-03T17:33:11.564Z",
+      "events": [
+        {
+          "id": "87c0bd19-7798-4a73-a821-0cca03a1266d",
+          "ts": "2026-04-03T17:33:11.564Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 65757,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "52f7d632-5b2f-4750-9a61-9e638523a674",
+      "startedAt": "2026-04-03T17:32:58.555Z",
+      "endedAt": "2026-04-03T17:32:58.555Z",
+      "events": [
+        {
+          "id": "4e7c5ba3-387f-4ba9-b00c-93483d4924c2",
+          "ts": "2026-04-03T17:32:58.555Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 63839,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "e1cc7859-441e-45ea-aea3-c0df97494ec9",
+      "startedAt": "2026-04-03T17:32:51.670Z",
+      "endedAt": "2026-04-03T17:32:51.670Z",
+      "events": [
+        {
+          "id": "fda08b36-80c3-499c-b36c-dda210a042d4",
+          "ts": "2026-04-03T17:32:51.670Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 63618,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "f394fa0b-572c-4611-895e-5f68146264c6",
+      "startedAt": "2026-04-03T17:32:42.695Z",
+      "endedAt": "2026-04-03T17:32:42.695Z",
+      "events": [
+        {
+          "id": "54505660-1576-4ec7-af8e-a57f9ac7587f",
+          "ts": "2026-04-03T17:32:42.695Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 62542,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "dbdc26c2-7240-4740-9e52-390213b8b8ca",
+      "startedAt": "2026-04-03T17:32:35.034Z",
+      "endedAt": "2026-04-03T17:32:35.034Z",
+      "events": [
+        {
+          "id": "627f7657-0273-4029-b830-73f30a2623d1",
+          "ts": "2026-04-03T17:32:35.034Z",
+          "path": "apps/extension/src/background/index.ts",
+          "op": "change",
+          "bytesChanged": 62578,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "0dc52bdc-c589-4dc9-ba09-d56ca5a1cfd0",
+      "startedAt": "2026-04-03T17:32:29.047Z",
+      "endedAt": "2026-04-03T17:32:29.047Z",
+      "events": [
+        {
+          "id": "78f514c2-74d9-4a82-9c6d-0d58b640c8ee",
+          "ts": "2026-04-03T17:32:29.047Z",
+          "path": "apps/extension/src/core/settings/SettingsService.ts",
+          "op": "change",
+          "bytesChanged": 18328,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "4f4ce50b-c564-4f2f-ad1b-3d6388495068",
+      "startedAt": "2026-04-03T17:32:00.982Z",
+      "endedAt": "2026-04-03T17:32:00.982Z",
+      "events": [
+        {
+          "id": "90d74ca0-324b-4550-b62d-2e52b0d2657d",
+          "ts": "2026-04-03T17:32:00.982Z",
+          "path": "apps/extension/src/background/sensitiveRuntimeClient.ts",
+          "op": "add",
+          "bytesChanged": 6274
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "1b7ecb62-5ead-4ea1-b3ce-130c8fc02cb9",
+      "startedAt": "2026-04-03T17:31:28.002Z",
+      "endedAt": "2026-04-03T17:31:28.002Z",
+      "events": [
+        {
+          "id": "217e9d74-803d-445e-b6e4-4b44a8476622",
+          "ts": "2026-04-03T17:31:28.002Z",
+          "path": "apps/extension/src/background/nativeHostClient.ts",
+          "op": "add",
+          "bytesChanged": 1957
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "2a944a88-7554-4291-aeb1-6ca96b0a5967",
+      "startedAt": "2026-04-03T17:30:24.252Z",
+      "endedAt": "2026-04-03T17:30:24.252Z",
+      "events": [
+        {
+          "id": "75a20f64-c1c8-47e1-9aae-4dceb44bcc42",
+          "ts": "2026-04-03T17:30:24.252Z",
+          "path": "apps/api/src/index.ts",
+          "op": "change",
+          "bytesChanged": 47483,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "07d16cb2-5041-4d81-acce-7b033814777b",
+      "startedAt": "2026-04-03T17:30:10.529Z",
+      "endedAt": "2026-04-03T17:30:10.529Z",
+      "events": [
+        {
+          "id": "8c770cbb-9866-4408-b6f6-26eed5957147",
+          "ts": "2026-04-03T17:30:10.529Z",
+          "path": "apps/api/src/native/sensitiveHttp.ts",
+          "op": "change",
+          "bytesChanged": 2019,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "07c30737-b94f-4486-9ab7-da3a7683aad4",
+      "startedAt": "2026-04-03T17:29:49.092Z",
+      "endedAt": "2026-04-03T17:29:49.092Z",
+      "events": [
+        {
+          "id": "bec721b0-6237-4188-9997-fb08bf10cf1a",
+          "ts": "2026-04-03T17:29:49.092Z",
+          "path": "apps/api/src/native/sensitiveHttp.ts",
+          "op": "add",
+          "bytesChanged": 1991
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "cfec0c27-bac9-495a-8ed5-f7da22b15293",
+      "startedAt": "2026-04-03T17:29:34.025Z",
+      "endedAt": "2026-04-03T17:29:34.025Z",
+      "events": [
+        {
+          "id": "8db6dfc2-ce3d-4acf-99b7-bd2af1ecc622",
+          "ts": "2026-04-03T17:29:34.025Z",
+          "path": "apps/api/src/native/nativeHost.ts",
+          "op": "add",
+          "bytesChanged": 6952
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "de8a6993-85ff-4f2a-8329-9a5cd0c1e9a0",
+      "startedAt": "2026-04-03T17:28:56.819Z",
+      "endedAt": "2026-04-03T17:28:56.819Z",
+      "events": [
+        {
+          "id": "7524ed9c-7ad7-4bf2-ba26-895ac3286686",
+          "ts": "2026-04-03T17:28:56.819Z",
+          "path": "apps/api/src/native/runtimeAuth.ts",
+          "op": "add",
+          "bytesChanged": 2044
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "9440686e-ce80-4a52-8b39-af4ecf45d982",
+      "startedAt": "2026-04-03T17:28:42.936Z",
+      "endedAt": "2026-04-03T17:28:42.936Z",
+      "events": [
+        {
+          "id": "8ac0e9ff-6cba-4537-9aa4-6c8b7a39f34c",
+          "ts": "2026-04-03T17:28:42.936Z",
+          "path": "apps/api/src/providers/LocalDocumentParserAdapter.ts",
+          "op": "add",
+          "bytesChanged": 12665
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "1f769963-939e-496c-aaf2-a470cdbb6cc8",
+      "startedAt": "2026-04-03T17:27:42.168Z",
+      "endedAt": "2026-04-03T17:27:42.168Z",
+      "events": [
+        {
+          "id": "b5fc38fe-ac9a-4116-98d1-ccc2bf1eaacf",
+          "ts": "2026-04-03T17:27:42.168Z",
+          "path": "apps/api/src/providers/LocalDocumentParserAdapter.ts",
+          "op": "unlink",
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "c45bf518-5676-41cc-9f4b-54a6d3f2ad16",
+      "startedAt": "2026-04-03T17:27:38.032Z",
+      "endedAt": "2026-04-03T17:27:38.032Z",
+      "events": [
+        {
+          "id": "3fff59d5-eb54-43f4-8497-567c00c1aa14",
+          "ts": "2026-04-03T17:27:38.032Z",
+          "path": "apps/api/src/providers/providerCredentialStore.ts",
+          "op": "add",
+          "bytesChanged": 15230
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "5dd02be3-eebb-47d3-9b4b-3429f82fcf19",
+      "startedAt": "2026-04-03T17:26:25.878Z",
+      "endedAt": "2026-04-03T17:26:25.878Z",
+      "events": [
+        {
+          "id": "1df54075-50c2-435b-bec6-eb83e82f84f7",
+          "ts": "2026-04-03T17:26:25.878Z",
+          "path": "apps/api/src/providers/providerCredentialStore.ts",
+          "op": "unlink",
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "dba2fcc1-c737-49ff-8e9a-e53fb0b6d131",
+      "startedAt": "2026-04-03T17:26:13.578Z",
+      "endedAt": "2026-04-03T17:26:13.578Z",
+      "events": [
+        {
+          "id": "50968c28-4e15-4bf7-b662-2e89619382a2",
+          "ts": "2026-04-03T17:26:13.578Z",
+          "path": "packages/contracts/src/index.ts",
+          "op": "change",
+          "bytesChanged": 3610,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "32247aaa-2f3d-490a-96da-fda43ef67c08",
+      "startedAt": "2026-04-03T17:26:05.932Z",
+      "endedAt": "2026-04-03T17:26:05.932Z",
+      "events": [
+        {
+          "id": "2a5c6411-3c88-42b6-a8e7-f5ea9bbcf5c9",
+          "ts": "2026-04-03T17:26:05.932Z",
+          "path": "packages/contracts/src/types/index.ts",
+          "op": "change",
+          "bytesChanged": 21268,
+          "language": "typescript"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "0b33d2b4-f691-44a9-99c2-b7fa2d2046dc",
+      "startedAt": "2026-04-02T22:33:48.512Z",
+      "endedAt": "2026-04-02T22:33:48.512Z",
+      "events": [
+        {
+          "id": "7538274f-c0c2-44c3-bba0-854e37763fb6",
+          "ts": "2026-04-02T22:33:48.512Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775169228309-d3e67659f5e878.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
+    {
+      "id": "112a4aeb-0232-433a-a466-9941b69906ee",
+      "startedAt": "2026-04-02T20:57:06.901Z",
+      "endedAt": "2026-04-02T20:57:06.901Z",
+      "events": [
+        {
+          "id": "3b1ad9b0-d507-4b99-887a-907d76ce657e",
+          "ts": "2026-04-02T20:57:06.901Z",
+          "path": "apps/extension/vite.config.ts.timestamp-1775163426739-6e9c1a050a4ff8.mjs",
+          "op": "unlink"
+        }
+      ],
+      "source": "auto-daemon"
+    },
     {
       "id": "26c1b604-acbe-4541-9bb3-c9515979f13b",
       "startedAt": "2026-04-02T19:25:58.565Z",
@@ -11039,6 +12662,6 @@
         ".sessionmap/TECH_STACK.md"
       ]
     },
-    "lastIncrementalUpdateMs": 1
+    "lastIncrementalUpdateMs": 3
   }
 }

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReplyMate Privacy Policy</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="eyebrow">ReplyMate Privacy Policy</div>
+      <h1>How ReplyMate stores data and where requests go.</h1>
+      <p>Last updated: April 7, 2026</p>
+    </header>
+
+    <main class="prose">
+      <section>
+        <h2>Overview</h2>
+        <p>
+          ReplyMate is a local-first Chrome extension for drafting replies inside Slack, Gmail, and
+          other web apps. The main public store path keeps sensitive provider access local to the
+          extension.
+        </p>
+      </section>
+
+      <section>
+        <h2>What ReplyMate stores</h2>
+        <ul>
+          <li>Extension settings such as provider mode, model name, feature flags, and preferences.</li>
+          <li>Encrypted vault records for provider keys when you choose to store a key for reuse.</li>
+          <li>Workspace state needed to restore drafts, evidence status, and UI state.</li>
+        </ul>
+        <p>
+          ReplyMate does not store raw provider API keys in saved settings, <code>chrome.storage.sync</code>,
+          or <code>chrome.storage.session</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>How provider keys are handled</h2>
+        <ul>
+          <li>The key is encrypted before it is written to extension storage.</li>
+          <li>Only ciphertext and vault metadata are stored at rest.</li>
+          <li>Decrypted keys live only in the extension background service worker while it remains active.</li>
+          <li>Chrome can unload the background service worker, which relocks ReplyMate until you unlock again.</li>
+        </ul>
+        <p>ReplyMate supports passkey-first unlock and passphrase fallback for the local encrypted vault.</p>
+      </section>
+
+      <section>
+        <h2>What content ReplyMate can process</h2>
+        <ul>
+          <li>The visible draft text in the active composer.</li>
+          <li>Nearby message context captured from supported pages.</li>
+          <li>Uploaded evidence files such as TXT, DOCX, PDF, and images.</li>
+        </ul>
+        <p>
+          TXT, DOCX, and PDF parsing run in the extension for the main store path. Image OCR depends
+          on the active local or cloud model path you select.
+        </p>
+      </section>
+
+      <section>
+        <h2>Where model requests go</h2>
+        <ul>
+          <li>To a local runtime you control, such as Ollama or a loopback OpenAI-compatible endpoint.</li>
+          <li>Directly to a cloud provider you configure, such as OpenAI, Anthropic, Gemini, OpenRouter, or a custom OpenAI-compatible API.</li>
+        </ul>
+        <p>
+          ReplyMate does not proxy your model traffic through a ReplyMate-managed cloud service in
+          these store-path modes.
+        </p>
+      </section>
+
+      <section>
+        <h2>Telemetry</h2>
+        <p>
+          Telemetry is optional and off by default. If you enable it, ReplyMate may send coarse
+          diagnostic events to the configured ReplyMate backend path. The product should not log raw
+          provider keys or raw decrypted vault contents.
+        </p>
+      </section>
+
+      <section>
+        <h2>Website permissions</h2>
+        <p>
+          ReplyMate uses website access to detect supported text boxes, capture local context from
+          supported surfaces, and insert drafts back into the active composer. Custom provider host
+          access is requested only when you explicitly configure a custom OpenAI-compatible endpoint.
+        </p>
+      </section>
+
+      <section>
+        <h2>Your choices</h2>
+        <ul>
+          <li>Avoid saving a provider key and enter it only when needed.</li>
+          <li>Remove stored encrypted provider credentials from Settings.</li>
+          <li>Disable optional telemetry.</li>
+          <li>Use local models instead of cloud providers.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Support</h2>
+        <p>
+          For support or privacy questions, visit the ReplyMate support page at
+          <a href="./support.html">support.html</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

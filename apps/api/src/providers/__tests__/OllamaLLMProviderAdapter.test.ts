@@ -229,7 +229,7 @@ describe("OllamaLLMProviderAdapter", () => {
     expect(response.debug?.cleanup.winner).toBe("model");
   });
 
-  it("fails improve draft when no safe cleaned-draft candidate exists", async () => {
+  it("falls back to a best-effort cleanup when no strict safe cleaned-draft candidate exists", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okJson({
         message: {
@@ -259,14 +259,52 @@ describe("OllamaLLMProviderAdapter", () => {
       keepAlive: "15m",
     });
 
-    await expect(
-      adapter.generateDrafts(
-        makeRequest({
-          draftInput:
-            "hi courtney because the person had an apoointment scheduled at 9 am atime qand dnd was turned on today at 7:02 o she should not recieve any message afgtter this",
-        })
-      )
-    ).rejects.toMatchObject({
+    const response = await adapter.generateDrafts(
+      makeRequest({
+        draftInput:
+          "hi courtney because the person had an apoointment scheduled at 9 am atime qand dnd was turned on today at 7:02 o she should not recieve any message afgtter this",
+      })
+    );
+
+    expect(response.drafts[0].label).toBe("Cleaned Draft");
+    expect(response.drafts[0].text).toContain("apoointment");
+    expect(response.warnings).toContain(
+      "Cleaned Draft quality was limited; returned a best-effort model cleanup. Review before sending."
+    );
+    expect(response.debug?.cleanup.winner).toBe("best_effort_model");
+  });
+
+  it("still fails improve draft when all cleanup output is unsafe", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okJson({
+        message: {
+          content: JSON.stringify({
+            warnings: [],
+            variants: [
+              {
+                role: "primary",
+                text: "We can line this up next week and then launch the following week.",
+              },
+              {
+                role: "alternate",
+                text: "We can line this up next week and then launch the following week.",
+              },
+            ],
+          }),
+        },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OllamaLLMProviderAdapter("http://127.0.0.1:11434", "qwen3:8b", 1_000, {
+      temperature: 0.15,
+      topP: 0.85,
+      repeatPenalty: 1.05,
+      numPredict: 420,
+      keepAlive: "15m",
+    });
+
+    await expect(adapter.generateDrafts(makeRequest())).rejects.toMatchObject({
       errorCode: "DRAFT_QUALITY_UNAVAILABLE",
     });
   });

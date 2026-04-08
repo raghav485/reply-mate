@@ -71,11 +71,27 @@ function createSettingsState() {
       }
     }),
     validateConnection: vi.fn(),
+    getNativeRuntimeStatus: vi.fn(async () => ({
+      transport: "native_host",
+      availability: "ready",
+      extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+      hostName: "app.replymate.native",
+      message: "ReplyMate local runtime is connected through app.replymate.native.",
+    })),
     getProviderCredentialStatus: vi.fn(async () => ({
       apiVersion: "v1",
       storage: {
         backend: "macos_keychain",
+        platform: "macos",
+        persistenceMode: "persistent_secure",
         supported: true,
+      },
+      runtime: {
+        transport: "native_host",
+        availability: "ready",
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message: "ReplyMate local runtime is connected through app.replymate.native.",
       },
       credentials: [],
     })),
@@ -83,7 +99,16 @@ function createSettingsState() {
       apiVersion: "v1",
       storage: {
         backend: "macos_keychain",
+        platform: "macos",
+        persistenceMode: "persistent_secure",
         supported: true,
+      },
+      runtime: {
+        transport: "native_host",
+        availability: "ready",
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message: "ReplyMate local runtime is connected through app.replymate.native.",
       },
       credentials: [],
     })),
@@ -91,7 +116,16 @@ function createSettingsState() {
       apiVersion: "v1",
       storage: {
         backend: "macos_keychain",
+        platform: "macos",
+        persistenceMode: "persistent_secure",
         supported: true,
+      },
+      runtime: {
+        transport: "native_host",
+        availability: "ready",
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message: "ReplyMate local runtime is connected through app.replymate.native.",
       },
       credentials: [],
     })),
@@ -179,6 +213,7 @@ describe("SettingsPanel", () => {
     expect(getCurrent().backend.baseUrl).toBe("http://127.0.0.1:3100");
     expect(container.textContent).toContain("Saved locally.");
     expect(container.textContent).toContain("Saved Locally");
+    expect(container.textContent).toContain("Runtime transport:");
   });
 
   it("persists default preferences even when validation returns invalid", async () => {

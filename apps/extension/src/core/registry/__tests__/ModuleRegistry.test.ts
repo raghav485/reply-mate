@@ -128,19 +128,66 @@ function makeContext(
           warning: "Image OCR is not configured; using metadata-only summary.",
         },
       })),
+      getNativeRuntimeStatus: vi.fn(async () => ({
+        transport: "dev_loopback" as const,
+        availability: "ready" as const,
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message:
+          "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+      })),
       getProviderCredentialStatus: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory" as const, supported: true },
+        storage: {
+          backend: "memory" as const,
+          platform: "macos" as const,
+          persistenceMode: "session_only" as const,
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback" as const,
+          availability: "ready" as const,
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       saveProviderCredential: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory" as const, supported: true },
+        storage: {
+          backend: "memory" as const,
+          platform: "macos" as const,
+          persistenceMode: "session_only" as const,
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback" as const,
+          availability: "ready" as const,
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       deleteProviderCredential: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory" as const, supported: true },
+        storage: {
+          backend: "memory" as const,
+          platform: "macos" as const,
+          persistenceMode: "session_only" as const,
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback" as const,
+          availability: "ready" as const,
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       subscribe: vi.fn(() => () => {}),

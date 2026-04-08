@@ -18,6 +18,8 @@ function formatCoverage(coverage: GenerateDraftDebug["contextReply"]["coverage"]
 
 function formatWinner(winner: GenerateDraftDebug["cleanup"]["winner"]): string {
   switch (winner) {
+    case "best_effort_model":
+      return "Best-effort model output";
     case "model":
     default:
       return "Model output";

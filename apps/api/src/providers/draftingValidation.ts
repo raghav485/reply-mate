@@ -773,23 +773,38 @@ export function selectPreferredLlmCleanupCandidate(options: {
 }): CleanedDraftCandidate | null {
   return options.modelCandidates
     .filter((candidate) => !hasUnsafeCleanupIssues(candidate))
-    .reduce<CleanedDraftCandidate | null>((best, candidate) => {
-      if (!best) return candidate;
+    .reduce<CleanedDraftCandidate | null>(selectHigherQualityCleanupCandidate, null);
+}
 
-      if (candidate.qualityScore !== best.qualityScore) {
-        return candidate.qualityScore > best.qualityScore ? candidate : best;
-      }
+export function selectImproveDraftCleanupCandidate(options: {
+  modelCandidates: CleanedDraftCandidate[];
+}): {
+  cleanedSelection: CleanedDraftCandidate | null;
+  cleanupWinner: "model" | "best_effort_model" | null;
+} {
+  const strictSelection = selectPreferredLlmCleanupCandidate(options);
+  if (strictSelection) {
+    return {
+      cleanedSelection: strictSelection,
+      cleanupWinner: "model",
+    };
+  }
 
-      if (candidate.shouldRetry !== best.shouldRetry) {
-        return candidate.shouldRetry ? best : candidate;
-      }
+  const bestEffortSelection = options.modelCandidates
+    .filter((candidate) => !hasBlockedCleanupIssues(candidate))
+    .reduce<CleanedDraftCandidate | null>(selectHigherQualityCleanupCandidate, null);
 
-      if (candidate.warnings.length !== best.warnings.length) {
-        return candidate.warnings.length < best.warnings.length ? candidate : best;
-      }
+  if (bestEffortSelection) {
+    return {
+      cleanedSelection: bestEffortSelection,
+      cleanupWinner: "best_effort_model",
+    };
+  }
 
-      return candidate.text.length >= best.text.length ? candidate : best;
-    }, null);
+  return {
+    cleanedSelection: null,
+    cleanupWinner: null,
+  };
 }
 
 export function selectPreferredContextReplyCandidate(options: {
@@ -822,4 +837,32 @@ function hasUnsafeCleanupIssues(candidate: CleanedDraftCandidate): boolean {
     candidate.softIssues.includes("cleanup_context_heavy") ||
     candidate.softIssues.includes("imported_excluded_context")
   );
+}
+
+function hasBlockedCleanupIssues(candidate: CleanedDraftCandidate): boolean {
+  return (
+    candidate.softIssues.includes("cleanup_context_heavy") ||
+    candidate.softIssues.includes("imported_excluded_context")
+  );
+}
+
+function selectHigherQualityCleanupCandidate(
+  best: CleanedDraftCandidate | null,
+  candidate: CleanedDraftCandidate
+): CleanedDraftCandidate {
+  if (!best) return candidate;
+
+  if (candidate.qualityScore !== best.qualityScore) {
+    return candidate.qualityScore > best.qualityScore ? candidate : best;
+  }
+
+  if (candidate.shouldRetry !== best.shouldRetry) {
+    return candidate.shouldRetry ? best : candidate;
+  }
+
+  if (candidate.warnings.length !== best.warnings.length) {
+    return candidate.warnings.length < best.warnings.length ? candidate : best;
+  }
+
+  return candidate.text.length >= best.text.length ? candidate : best;
 }

@@ -17,11 +17,16 @@ import type {
   ProviderCredentialDeleteRequest,
   ProviderCredentialStatusResponse,
   ProviderCredentialUpsertRequest,
+  NativeRuntimeStatus,
   ProviderConfig,
   BackendSettings,
   SettingsValidationResponse,
   DraftingProviderStatus,
   ParserProviderStatus,
+  VaultPasskeySetupRequest,
+  VaultPassphraseSetupRequest,
+  VaultPasskeyUnlockRequest,
+  VaultPassphraseUnlockRequest,
 } from "../types/index.js";
 import type { ExtensionEvent } from "../events/index.js";
 import type { FeatureFlagKey } from "../flags/index.js";
@@ -129,12 +134,26 @@ export interface SettingsService {
   getProviderCredentialStatus(
     input: Pick<BackendSettings, "baseUrl" | "token">
   ): Promise<ProviderCredentialStatusResponse>;
+  getNativeRuntimeStatus(
+    input: Pick<BackendSettings, "baseUrl" | "token">
+  ): Promise<NativeRuntimeStatus>;
   saveProviderCredential(
     input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialUpsertRequest
   ): Promise<ProviderCredentialStatusResponse>;
   deleteProviderCredential(
     input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialDeleteRequest
   ): Promise<ProviderCredentialStatusResponse>;
+  setupVaultWithPasskey?(input: VaultPasskeySetupRequest): Promise<ProviderCredentialStatusResponse>;
+  setupVaultWithPassphrase?(
+    input: VaultPassphraseSetupRequest
+  ): Promise<ProviderCredentialStatusResponse>;
+  unlockVaultWithPasskey?(
+    input: VaultPasskeyUnlockRequest
+  ): Promise<ProviderCredentialStatusResponse>;
+  unlockVaultWithPassphrase?(
+    input: VaultPassphraseUnlockRequest
+  ): Promise<ProviderCredentialStatusResponse>;
+  lockVault?(): Promise<ProviderCredentialStatusResponse>;
   subscribe(listener: (settings: AppSettings) => void): () => void;
 }
 

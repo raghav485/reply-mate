@@ -7,6 +7,7 @@ import type {
   DraftingRuntimeType,
   LocalProviderKind,
   ModelMode,
+  NativeRuntimeStatus,
   ParserFallbackMode,
   ParserProviderStatus,
   ParserRuntimeType,
@@ -17,8 +18,14 @@ import type {
   ProviderCredentialUpsertRequest,
   SettingsService as ISettingsService,
   SettingsValidationResponse,
+  VaultPasskeySetupRequest,
+  VaultPassphraseSetupRequest,
+  VaultPasskeyUnlockRequest,
+  VaultPassphraseUnlockRequest,
+  VaultStatus,
 } from "@replymate/contracts";
 import { DEFAULT_FLAGS, type FeatureFlagKey } from "@replymate/contracts";
+import { sendRuntimeMessage } from "../../shared/runtime.js";
 
 const APP_SETTINGS_KEY = "replymate:appSettings";
 const LEGACY_BACKEND_KEY = "replymate:backendConfig";
@@ -162,14 +169,14 @@ function readProviderConfig(input: unknown): ProviderConfig {
         normalizeBaseUrl(readString(local, "baseUrl") || "") ||
         DEFAULT_SETTINGS.provider.local.baseUrl,
       modelName: readString(local, "modelName") || DEFAULT_SETTINGS.provider.local.modelName,
-      apiKey: readString(local, "apiKey") || "",
+      apiKey: "",
       hasStoredApiKey: readBoolean(local, "hasStoredApiKey") || false,
     },
     cloud: {
       kind: normalizeCloudProviderKind(cloud.kind),
       baseUrl: normalizeBaseUrl(readString(cloud, "baseUrl") || ""),
       modelName: readString(cloud, "modelName") || "",
-      apiKey: readString(cloud, "apiKey") || "",
+      apiKey: "",
       hasStoredApiKey: readBoolean(cloud, "hasStoredApiKey") || false,
     },
   };
@@ -261,7 +268,11 @@ function readProviderCredentialState(input: unknown): ProviderCredentialState | 
 function readProviderCredentialStatusResponse(
   input: unknown
 ): ProviderCredentialStatusResponse | null {
-  if (!isRecord(input) || !isRecord(input.storage) || !Array.isArray(input.credentials)) {
+  if (
+    !isRecord(input) ||
+    !isRecord(input.storage) ||
+    !Array.isArray(input.credentials)
+  ) {
     return null;
   }
 
@@ -269,8 +280,19 @@ function readProviderCredentialStatusResponse(
   const supported = readBoolean(input.storage, "supported");
   if (
     !backend ||
-    !["macos_keychain", "memory", "unsupported"].includes(backend) ||
+    !["extension_local_vault", "macos_keychain", "windows_dpapi", "memory", "unsupported"].includes(backend) ||
     supported === undefined
+  ) {
+    return null;
+  }
+
+  const platform = readString(input.storage, "platform");
+  const persistenceMode = readString(input.storage, "persistenceMode");
+  if (
+    !platform ||
+    !["extension", "macos", "windows", "linux", "unknown"].includes(platform) ||
+    !persistenceMode ||
+    !["persistent_encrypted", "persistent_secure", "session_only", "unsupported"].includes(persistenceMode)
   ) {
     return null;
   }
@@ -283,10 +305,81 @@ function readProviderCredentialStatusResponse(
     apiVersion: readString(input, "apiVersion") || "v1",
     storage: {
       backend: backend as ProviderCredentialStatusResponse["storage"]["backend"],
+      platform: platform as ProviderCredentialStatusResponse["storage"]["platform"],
+      persistenceMode:
+        persistenceMode as ProviderCredentialStatusResponse["storage"]["persistenceMode"],
       supported,
       message: readString(input.storage, "message"),
     },
+    runtime: readNativeRuntimeStatus(input.runtime),
+    vault: readVaultStatus(input.vault),
     credentials,
+  };
+}
+
+function readVaultStatus(input: unknown): VaultStatus {
+  if (!isRecord(input)) {
+    return {
+      mode: "unconfigured",
+      lockState: "setup_required",
+      sessionCacheEnabled: true,
+      passkeySupported: false,
+      encryptedEntryCount: 0,
+    };
+  }
+
+  const mode = readString(input, "mode");
+  const lockState = readString(input, "lockState");
+
+  return {
+    mode:
+      mode === "passkey" || mode === "passphrase" || mode === "unconfigured"
+        ? mode
+        : "unconfigured",
+    lockState:
+      lockState === "locked" || lockState === "unlocked" || lockState === "setup_required"
+        ? lockState
+        : "setup_required",
+    sessionCacheEnabled: readBoolean(input, "sessionCacheEnabled") ?? true,
+    passkeySupported: readBoolean(input, "passkeySupported") ?? false,
+    encryptedEntryCount:
+      typeof input.encryptedEntryCount === "number" ? input.encryptedEntryCount : 0,
+    credentialId: readString(input, "credentialId"),
+    prfSaltBase64: readString(input, "prfSaltBase64"),
+    message: readString(input, "message"),
+  };
+}
+
+function readNativeRuntimeStatus(input: unknown): NativeRuntimeStatus | undefined {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+
+  const transport = readString(input, "transport");
+  const availability = readString(input, "availability");
+  const extensionId = readString(input, "extensionId");
+  const hostName = readString(input, "hostName");
+  const message = readString(input, "message");
+
+  if (
+    !transport ||
+    !["dev_loopback", "native_host", "extension_background"].includes(transport) ||
+    !availability ||
+    !["ready", "not_registered", "forbidden", "unavailable"].includes(availability) ||
+    !extensionId ||
+    !hostName ||
+    !message
+  ) {
+    return undefined;
+  }
+
+  return {
+    transport: transport as NativeRuntimeStatus["transport"],
+    availability: availability as NativeRuntimeStatus["availability"],
+    extensionId,
+    hostName,
+    message,
+    actionHint: readString(input, "actionHint"),
   };
 }
 
@@ -448,44 +541,25 @@ export class SettingsServiceImpl implements ISettingsService {
       providerConfig?: ProviderConfig;
     }
   ): Promise<SettingsValidationResponse> {
-    const baseUrl = normalizeBaseUrl(input.baseUrl);
-    if (!baseUrl) {
-      return {
-        valid: false,
-        warnings: ["API base URL is required."],
-        apiVersion: "v1",
-        serverVersion: "unknown",
-        deploymentMode: "local",
-        cloudGenerationAvailable: false,
-        authMode: "optional",
-        draftingProvider: defaultDraftingProviderStatus({
-          warning: "ReplyMate API base URL is not configured.",
-        }),
-        parserProvider: defaultParserProviderStatus({
-          warning: "ReplyMate API base URL is not configured.",
-        }),
-      };
-    }
+    const baseUrl = normalizeBaseUrl(input.baseUrl) || DEFAULT_BASE_URL;
 
-    const response = await fetch(`${baseUrl}/v1/settings/validate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(input.token ? { Authorization: `Bearer ${input.token}` } : {}),
-      },
-      body: JSON.stringify({
-        client: "replymate-extension",
+    const runtimeResponse = await sendRuntimeMessage<{
+      ok: boolean;
+      result?: SettingsValidationResponse;
+      error?: string;
+    }>({
+      type: "VALIDATE_SETTINGS",
+      payload: {
+        backend: { baseUrl, token: input.token },
         providerConfig: input.providerConfig || this.settings.provider,
-      }),
+      },
     });
 
-    const payload = (await response.json()) as SettingsValidationResponse & {
-      message?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(payload.message || "Settings validation failed.");
+    if (!runtimeResponse.ok || !runtimeResponse.result) {
+      throw new Error(runtimeResponse.error || "Settings validation failed.");
     }
+
+    const payload = runtimeResponse.result;
 
     return {
       valid: payload.valid,
@@ -504,35 +578,99 @@ export class SettingsServiceImpl implements ISettingsService {
   async getProviderCredentialStatus(
     input: Pick<BackendSettings, "baseUrl" | "token">
   ): Promise<ProviderCredentialStatusResponse> {
-    return this.requestCredentialStatus(input, {
-      method: "GET",
+    return this.requestCredentialStatus({
+      action: "GET_PROVIDER_CREDENTIAL_STATUS",
+      ...input,
     });
+  }
+
+  async getNativeRuntimeStatus(
+    input: Pick<BackendSettings, "baseUrl" | "token">
+  ): Promise<NativeRuntimeStatus> {
+    const baseUrl = normalizeBaseUrl(input.baseUrl) || DEFAULT_BASE_URL;
+
+    const runtimeResponse = await sendRuntimeMessage<{
+      ok: boolean;
+      status?: NativeRuntimeStatus;
+      error?: string;
+    }>({
+      type: "GET_NATIVE_RUNTIME_STATUS",
+      payload: {
+        baseUrl,
+        token: input.token,
+      },
+    });
+
+    if (!runtimeResponse.ok || !runtimeResponse.status) {
+      throw new Error(runtimeResponse.error || "Native runtime status check failed.");
+    }
+
+    const parsed = readNativeRuntimeStatus(runtimeResponse.status);
+    if (!parsed) {
+      throw new Error("Native runtime status payload is invalid.");
+    }
+
+    return parsed;
   }
 
   async saveProviderCredential(
     input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialUpsertRequest
   ): Promise<ProviderCredentialStatusResponse> {
-    return this.requestCredentialStatus(input, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target: input.target,
-        kind: input.kind,
-        apiKey: input.apiKey,
-      }),
+    return this.requestCredentialStatus({
+      action: "SAVE_PROVIDER_CREDENTIAL",
+      ...input,
     });
   }
 
   async deleteProviderCredential(
     input: Pick<BackendSettings, "baseUrl" | "token"> & ProviderCredentialDeleteRequest
   ): Promise<ProviderCredentialStatusResponse> {
-    return this.requestCredentialStatus(input, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target: input.target,
-        kind: input.kind,
-      }),
+    return this.requestCredentialStatus({
+      action: "DELETE_PROVIDER_CREDENTIAL",
+      ...input,
+    });
+  }
+
+  async setupVaultWithPasskey(
+    input: VaultPasskeySetupRequest
+  ): Promise<ProviderCredentialStatusResponse> {
+    return this.requestCredentialStatus({
+      action: "SETUP_VAULT_PASSKEY",
+      payload: input,
+    });
+  }
+
+  async setupVaultWithPassphrase(
+    input: VaultPassphraseSetupRequest
+  ): Promise<ProviderCredentialStatusResponse> {
+    return this.requestCredentialStatus({
+      action: "SETUP_VAULT_PASSPHRASE",
+      payload: input,
+    });
+  }
+
+  async unlockVaultWithPasskey(
+    input: VaultPasskeyUnlockRequest
+  ): Promise<ProviderCredentialStatusResponse> {
+    return this.requestCredentialStatus({
+      action: "UNLOCK_VAULT_PASSKEY",
+      payload: input,
+    });
+  }
+
+  async unlockVaultWithPassphrase(
+    input: VaultPassphraseUnlockRequest
+  ): Promise<ProviderCredentialStatusResponse> {
+    return this.requestCredentialStatus({
+      action: "UNLOCK_VAULT_PASSPHRASE",
+      payload: input,
+    });
+  }
+
+  async lockVault(): Promise<ProviderCredentialStatusResponse> {
+    return this.requestCredentialStatus({
+      action: "LOCK_VAULT",
+      payload: {},
     });
   }
 
@@ -542,30 +680,46 @@ export class SettingsServiceImpl implements ISettingsService {
   }
 
   private async requestCredentialStatus(
-    input: Pick<BackendSettings, "baseUrl" | "token">,
-    init: RequestInit
+    input:
+      | ({
+          action: "GET_PROVIDER_CREDENTIAL_STATUS";
+        } & Pick<BackendSettings, "baseUrl" | "token">)
+      | ({
+          action: "SAVE_PROVIDER_CREDENTIAL";
+        } & Pick<BackendSettings, "baseUrl" | "token"> &
+          ProviderCredentialUpsertRequest)
+      | ({
+          action: "DELETE_PROVIDER_CREDENTIAL";
+        } & Pick<BackendSettings, "baseUrl" | "token"> &
+          ProviderCredentialDeleteRequest)
+      | {
+          action:
+            | "SETUP_VAULT_PASSKEY"
+            | "SETUP_VAULT_PASSPHRASE"
+            | "UNLOCK_VAULT_PASSKEY"
+            | "UNLOCK_VAULT_PASSPHRASE"
+            | "LOCK_VAULT";
+          payload: unknown;
+        }
   ): Promise<ProviderCredentialStatusResponse> {
-    const baseUrl = normalizeBaseUrl(input.baseUrl);
-    if (!baseUrl) {
-      throw new Error("API base URL is required.");
+    if ("baseUrl" in input) {
+      input.baseUrl = normalizeBaseUrl(input.baseUrl) || DEFAULT_BASE_URL;
     }
 
-    const response = await fetch(`${baseUrl}/v1/settings/provider-credentials`, {
-      ...init,
-      headers: {
-        ...(input.token ? { Authorization: `Bearer ${input.token}` } : {}),
-        ...(init.headers || {}),
-      },
+    const runtimeResponse = await sendRuntimeMessage<{
+      ok: boolean;
+      status?: ProviderCredentialStatusResponse;
+      error?: string;
+    }>({
+      type: input.action,
+      payload: "payload" in input ? input.payload : input,
     });
 
-    const payload = (await response.json()) as ProviderCredentialStatusResponse & {
-      message?: string;
-    };
-    if (!response.ok) {
-      throw new Error(payload.message || "Provider credential request failed.");
+    if (!runtimeResponse.ok || !runtimeResponse.status) {
+      throw new Error(runtimeResponse.error || "Provider credential request failed.");
     }
 
-    const parsed = readProviderCredentialStatusResponse(payload);
+    const parsed = readProviderCredentialStatusResponse(runtimeResponse.status);
     if (!parsed) {
       throw new Error("Provider credential response payload is invalid.");
     }

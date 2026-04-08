@@ -387,9 +387,59 @@ export type BackendSettings = {
 export type ProviderCredentialTarget = "local" | "cloud";
 
 export type ProviderCredentialStorageBackend =
+  | "extension_local_vault"
   | "macos_keychain"
+  | "windows_dpapi"
   | "memory"
   | "unsupported";
+
+export type ProviderCredentialStoragePlatform =
+  | "extension"
+  | "macos"
+  | "windows"
+  | "linux"
+  | "unknown";
+
+export type ProviderCredentialPersistenceMode =
+  | "persistent_encrypted"
+  | "persistent_secure"
+  | "session_only"
+  | "unsupported";
+
+export type SensitiveRuntimeTransport =
+  | "dev_loopback"
+  | "native_host"
+  | "extension_background";
+
+export type NativeRuntimeAvailability =
+  | "ready"
+  | "not_registered"
+  | "forbidden"
+  | "unavailable";
+
+export type NativeRuntimeStatus = {
+  transport: SensitiveRuntimeTransport;
+  availability: NativeRuntimeAvailability;
+  extensionId: string;
+  hostName: string;
+  message: string;
+  actionHint?: string;
+};
+
+export type VaultMode = "passkey" | "passphrase" | "unconfigured";
+
+export type VaultLockState = "locked" | "unlocked" | "setup_required";
+
+export type VaultStatus = {
+  mode: VaultMode;
+  lockState: VaultLockState;
+  sessionCacheEnabled: boolean;
+  passkeySupported: boolean;
+  encryptedEntryCount: number;
+  credentialId?: string;
+  prfSaltBase64?: string;
+  message?: string;
+};
 
 export type ProviderCredentialRef = {
   target: ProviderCredentialTarget;
@@ -410,10 +460,36 @@ export type ProviderCredentialStatusResponse = {
   apiVersion: string;
   storage: {
     backend: ProviderCredentialStorageBackend;
+    platform: ProviderCredentialStoragePlatform;
+    persistenceMode: ProviderCredentialPersistenceMode;
     supported: boolean;
     message?: string;
   };
+  runtime?: NativeRuntimeStatus;
+  vault?: VaultStatus;
   credentials: ProviderCredentialState[];
+};
+
+export type VaultPasskeySetupRequest = {
+  credentialId: string;
+  prfSaltBase64: string;
+  prfOutputBase64: string;
+  sessionCacheEnabled: boolean;
+  initialCredential: ProviderCredentialUpsertRequest;
+};
+
+export type VaultPassphraseSetupRequest = {
+  passphrase: string;
+  sessionCacheEnabled: boolean;
+  initialCredential: ProviderCredentialUpsertRequest;
+};
+
+export type VaultPasskeyUnlockRequest = {
+  prfOutputBase64: string;
+};
+
+export type VaultPassphraseUnlockRequest = {
+  passphrase: string;
 };
 
 export type UserPreferences = {
@@ -448,6 +524,132 @@ export type SettingsValidationResponse = {
   draftingProvider: DraftingProviderStatus;
   parserProvider: ParserProviderStatus;
 };
+
+export type NativeHostRequest =
+  | {
+      id: string;
+      type: "runtime.status";
+      payload: {
+        extensionId: string;
+      };
+    }
+  | {
+      id: string;
+      type: "settings.validate";
+      payload: Pick<BackendSettings, "baseUrl"> & {
+        providerConfig?: ProviderConfig;
+      };
+    }
+  | {
+      id: string;
+      type: "providerCredentials.status";
+      payload: Pick<BackendSettings, "baseUrl">;
+    }
+  | {
+      id: string;
+      type: "providerCredentials.save";
+      payload: Pick<BackendSettings, "baseUrl"> & ProviderCredentialUpsertRequest;
+    }
+  | {
+      id: string;
+      type: "providerCredentials.delete";
+      payload: Pick<BackendSettings, "baseUrl"> & ProviderCredentialDeleteRequest;
+    }
+  | {
+      id: string;
+      type: "draft.generate";
+      payload: Pick<BackendSettings, "baseUrl"> & {
+        request: GenerateDraftRequest;
+      };
+    }
+  | {
+      id: string;
+      type: "evidence.ingest";
+      payload: Pick<BackendSettings, "baseUrl"> & {
+        sessionId: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        mode: EvidenceMode;
+        mentionInReply: boolean;
+        fileDataBase64: string;
+      };
+    }
+  | {
+      id: string;
+      type: "evidence.job";
+      payload: Pick<BackendSettings, "baseUrl"> & {
+        jobId: string;
+      };
+    };
+
+export type NativeHostSuccessResponse =
+  | {
+      id: string;
+      ok: true;
+      type: "runtime.status";
+      payload: {
+        apiVersion: string;
+        hostName: string;
+      };
+    }
+  | {
+      id: string;
+      ok: true;
+      type: "settings.validate";
+      payload: SettingsValidationResponse;
+    }
+  | {
+      id: string;
+      ok: true;
+      type:
+        | "providerCredentials.status"
+        | "providerCredentials.save"
+        | "providerCredentials.delete";
+      payload: ProviderCredentialStatusResponse;
+    }
+  | {
+      id: string;
+      ok: true;
+      type: "draft.generate";
+      payload: GenerateDraftResponse;
+    }
+  | {
+      id: string;
+      ok: true;
+      type: "evidence.ingest";
+      payload: {
+        apiVersion: string;
+        mode: "sync";
+        result: EvidenceSummary;
+      } | {
+        apiVersion: string;
+        mode: "async";
+        job: EvidenceJobStatus;
+      };
+    }
+  | {
+      id: string;
+      ok: true;
+      type: "evidence.job";
+      payload: {
+        apiVersion: string;
+        job: EvidenceJobStatus;
+      };
+    };
+
+export type NativeHostErrorResponse = {
+  id: string;
+  ok: false;
+  type: NativeHostRequest["type"];
+  error: {
+    message: string;
+    errorCode?: string;
+    status?: number;
+  };
+};
+
+export type NativeHostResponse = NativeHostSuccessResponse | NativeHostErrorResponse;
 
 export type BetaSessionRequest = {
   email: string;
@@ -698,7 +900,7 @@ export type GenerateDraftExcludedTurnDebug = {
 };
 
 export type GenerateDraftCleanupDebug = {
-  winner: "model";
+  winner: "model" | "best_effort_model";
   modelQualityScore?: number;
   selectedQualityScore: number;
   suspiciousTokens: string[];

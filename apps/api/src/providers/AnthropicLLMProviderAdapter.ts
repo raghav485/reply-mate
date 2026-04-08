@@ -22,7 +22,7 @@ import {
   validateCleanedDraftCandidate,
   validateContextReplyCandidate,
   selectPreferredContextReplyCandidate,
-  selectPreferredLlmCleanupCandidate,
+  selectImproveDraftCleanupCandidate,
 } from "./draftingValidation.js";
 import { createDraftGenerationInput } from "./draftInput.js";
 import { logImproveDraftTrace } from "./draftDebug.js";
@@ -217,10 +217,10 @@ export class AnthropicLLMProviderAdapter implements LLMProviderAdapter {
         }
       }
 
-      const cleanedSelection = selectPreferredLlmCleanupCandidate({
+      const cleanupSelection = selectImproveDraftCleanupCandidate({
         modelCandidates: cleanedCandidates,
       });
-      if (!cleanedSelection) {
+      if (!cleanupSelection.cleanedSelection || !cleanupSelection.cleanupWinner) {
         throw new ProviderError({
           message: "Improve Draft could not produce a safe cleaned draft from the Anthropic model.",
           errorCode: "DRAFT_QUALITY_UNAVAILABLE",
@@ -229,9 +229,14 @@ export class AnthropicLLMProviderAdapter implements LLMProviderAdapter {
         });
       }
 
+      const cleanedSelection = cleanupSelection.cleanedSelection;
       const cleanedDraftText = cleanedSelection.text;
       const warnings: string[] = [];
-      if (cleanedSelection.softIssues.length > 0 || cleanedSelection.shouldRetry) {
+      if (cleanupSelection.cleanupWinner === "best_effort_model") {
+        warnings.push(
+          "Cleaned Draft quality was limited; returned a best-effort model cleanup. Review before sending."
+        );
+      } else if (cleanedSelection.softIssues.length > 0 || cleanedSelection.shouldRetry) {
         warnings.push(
           "Cleaned Draft quality was limited; returned the strongest safe model cleanup available."
         );
@@ -314,6 +319,7 @@ export class AnthropicLLMProviderAdapter implements LLMProviderAdapter {
         input: normalized,
         runtime: "generic_local_chat_api",
         usedRetryPass,
+        cleanupWinner: cleanupSelection.cleanupWinner,
         cleanedSelection,
         cleanedModelCandidate: cleanedSelection,
         contextCandidate: contextSelection,

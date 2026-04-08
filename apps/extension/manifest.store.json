@@ -10,12 +10,20 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://*/*",
     "https://app.slack.com/*",
     "https://*.slack.com/*",
     "https://mail.google.com/*",
-    "https://api.replymate.app/*",
-    "https://app.replymate.app/*"
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://localhost/*",
+    "https://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js",

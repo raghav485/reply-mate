@@ -12,6 +12,7 @@ import type {
   CostMode,
   EvidenceSummary,
   GenerateDraftResponse,
+  ProviderCredentialStatusResponse,
   TonePreset,
 } from "@replymate/contracts";
 import { useActiveTabId } from "../../core/ui/ActiveTabContext.js";
@@ -70,6 +71,12 @@ type InlineNotice = {
   message: string;
 };
 
+type VaultPromptState = {
+  mode: NonNullable<ProviderCredentialStatusResponse["vault"]>["mode"];
+  credentialId?: string;
+  prfSaltBase64?: string;
+};
+
 type SessionUpdatedMessage = {
   type?: string;
   payload?: {
@@ -81,9 +88,68 @@ type SessionUpdatedMessage = {
 };
 
 type PendingEvidenceDecision = "wait" | "continue" | "cancel";
+type DraftingRecoveryHint = {
+  detail: string;
+  command?: string;
+  openSettings?: boolean;
+};
 
 const NO_COMPOSER_MESSAGE =
   "ReplyMate could not find an active text box on this page. Focus the composer and try again.";
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function fromBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function randomBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+async function getPasskeyUnlockMaterial(
+  credentialId: string,
+  prfSaltBase64: string
+): Promise<string> {
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: randomBytes(32),
+      userVerification: "required",
+      allowCredentials: [{ id: fromBase64(credentialId), type: "public-key" }],
+      extensions: {
+        prf: {
+          eval: {
+            first: fromBase64(prfSaltBase64),
+          },
+        },
+      },
+    },
+  } as CredentialRequestOptions)) as PublicKeyCredential | null;
+  const prfOutput = (assertion as PublicKeyCredential & {
+    getClientExtensionResults?: () => {
+      prf?: { results?: { first?: ArrayBuffer } };
+    };
+  })
+    ?.getClientExtensionResults?.()
+    ?.prf?.results?.first;
+  if (!assertion || !prfOutput) {
+    throw new Error("ReplyMate passkey unlock was cancelled or unavailable.");
+  }
+  return toBase64(new Uint8Array(prfOutput as ArrayBuffer));
+}
 
 function readPendingInsert(): PendingInsertState | null {
   try {
@@ -278,6 +344,89 @@ function resolveEffectiveCostMode(settingsSnapshot: AppSettings): CostMode {
   return settingsSnapshot.provider.mode === "local_models" ? "local_only" : "cloud_quality";
 }
 
+function formatGenerationFailureMessage(
+  errorCode: string | null | undefined,
+  message: string | undefined,
+  settingsSnapshot: AppSettings
+): string {
+  if (errorCode === "VAULT_LOCKED") {
+    return "ReplyMate relocked after Chrome unloaded the background worker. Unlock the vault below to continue.";
+  }
+  if (errorCode === "VAULT_SETUP_REQUIRED") {
+    return "Set up the ReplyMate vault in Settings before ReplyMate can use stored provider keys.";
+  }
+  if (errorCode === "CUSTOM_HOST_PERMISSION_REQUIRED") {
+    return "ReplyMate needs one-time Chrome permission for this custom provider host before it can generate drafts.";
+  }
+  if (
+    errorCode === "OLLAMA_ORIGIN_FORBIDDEN" ||
+    (settingsSnapshot.provider.mode === "local_models" &&
+      settingsSnapshot.provider.local.kind === "ollama" &&
+      /403\s+forbidden|forbidden/i.test(message || ""))
+  ) {
+    return "Ollama rejected ReplyMate's Chrome extension origin. Restart Ollama with OLLAMA_ORIGINS set for this extension, then try again.";
+  }
+  return message || "Unknown generation error";
+}
+
+function buildDraftingRecoveryHint(
+  errorCode: string | null | undefined,
+  message: string | undefined,
+  settingsSnapshot: AppSettings
+): DraftingRecoveryHint | null {
+  if (errorCode === "CUSTOM_HOST_PERMISSION_REQUIRED") {
+    return {
+      detail:
+        "Open Settings, keep the same custom base URL, and approve the one-time Chrome host permission prompt for that exact origin.",
+      openSettings: true,
+    };
+  }
+
+  if (
+    errorCode === "OLLAMA_ORIGIN_FORBIDDEN" ||
+    (settingsSnapshot.provider.mode === "local_models" &&
+      settingsSnapshot.provider.local.kind === "ollama" &&
+      /403\s+forbidden|forbidden/i.test(message || ""))
+  ) {
+    return {
+      detail:
+        "This usually means Ollama is reachable for health checks but is blocking direct chat requests from the Chrome extension origin.",
+      command: `OLLAMA_ORIGINS=chrome-extension://${chrome.runtime.id}`,
+    };
+  }
+
+  if (errorCode === "VAULT_SETUP_REQUIRED") {
+    return {
+      detail:
+        "Use Settings to create a passkey vault or passphrase vault before ReplyMate can remember a provider key.",
+      openSettings: true,
+    };
+  }
+
+  if (message === NO_COMPOSER_MESSAGE) {
+    return {
+      detail:
+        "ReplyMate only drafts into active website text boxes. Focus the composer first, then try again.",
+    };
+  }
+
+  if (message?.includes("browser internal pages")) {
+    return {
+      detail:
+        "ReplyMate cannot run on Chrome internal pages. Switch back to a normal website tab, focus the composer, and reopen the side panel.",
+    };
+  }
+
+  if (message?.includes("could not access this website yet")) {
+    return {
+      detail:
+        "Reload the website once so ReplyMate can reconnect its page bridge, then reopen the side panel.",
+    };
+  }
+
+  return null;
+}
+
 export function DraftingPanel() {
   const activeTabId = useActiveTabId();
   const { session, ensureFreshSession } = useActiveSession();
@@ -288,6 +437,7 @@ export function DraftingPanel() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<GenerateDraftResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [insertNotice, setInsertNotice] = useState<InlineNotice | null>(null);
   const [evidence, setEvidence] = useState<EvidenceSummary[]>([]);
   const [pendingEvidence, setPendingEvidence] = useState<PendingEvidenceState[]>([]);
@@ -295,6 +445,8 @@ export function DraftingPanel() {
   const [debugMode, setDebugMode] = useState(
     settings.get().preferences.debugMode
   );
+  const [vaultPrompt, setVaultPrompt] = useState<VaultPromptState | null>(null);
+  const [vaultPassphrase, setVaultPassphrase] = useState("");
 
   const [instruction, setInstruction] = useState("");
   const [actionMode, setActionMode] = useState<ActionMode>("improve_current_draft");
@@ -704,12 +856,14 @@ export function DraftingPanel() {
     const freshSession = await ensureFreshSession("generate");
     if (!freshSession?.snapshot) {
       setResponse(null);
+      setErrorCode("NO_COMPOSER");
       setError(NO_COMPOSER_MESSAGE);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setErrorCode(null);
     setInsertNotice(null);
     const cappedEvidence = capEvidenceSummaries(evidence);
     const settingsSnapshot = settings.get();
@@ -737,6 +891,7 @@ export function DraftingPanel() {
       (res) => {
         setLoading(false);
         if (chrome.runtime.lastError) {
+          setErrorCode(null);
           setError(chrome.runtime.lastError.message || "Communication error");
         } else if (res?.success && res.response) {
           const activePendingCount = activePendingEvidence.length;
@@ -752,12 +907,64 @@ export function DraftingPanel() {
               : res.response;
           setResponse(nextResponse);
           setError(null);
+          setErrorCode(null);
+          setVaultPrompt(null);
         } else {
           setResponse(null);
-          setError(res?.error || "Unknown generation error");
+          setErrorCode(res?.errorCode || null);
+          if (res?.errorCode === "VAULT_LOCKED" || res?.errorCode === "VAULT_SETUP_REQUIRED") {
+            void settings
+              .getProviderCredentialStatus({
+                baseUrl: settingsSnapshot.backend.baseUrl,
+                token: settingsSnapshot.backend.token,
+              })
+              .then((status) =>
+                setVaultPrompt({
+                  mode: status.vault?.mode || "unconfigured",
+                  credentialId: status.vault?.credentialId,
+                  prfSaltBase64: status.vault?.prfSaltBase64,
+                })
+              )
+              .catch(() => setVaultPrompt({ mode: "unconfigured" }));
+          }
+          setError(
+            formatGenerationFailureMessage(res?.errorCode, res?.error, settingsSnapshot)
+          );
         }
       }
     );
+  };
+
+  const handleUnlockVault = async () => {
+    if (!vaultPrompt) {
+      return;
+    }
+    try {
+      if (vaultPrompt.mode === "passkey") {
+        if (!vaultPrompt.credentialId || !vaultPrompt.prfSaltBase64) {
+          throw new Error("ReplyMate passkey metadata is unavailable. Re-open Settings.");
+        }
+        const prfOutputBase64 = await getPasskeyUnlockMaterial(
+          vaultPrompt.credentialId,
+          vaultPrompt.prfSaltBase64
+        );
+        await settings.unlockVaultWithPasskey!({ prfOutputBase64 });
+      } else if (vaultPrompt.mode === "passphrase") {
+        if (!vaultPassphrase.trim()) {
+          throw new Error("Enter your ReplyMate vault passphrase to unlock.");
+        }
+        await settings.unlockVaultWithPassphrase!({ passphrase: vaultPassphrase });
+        setVaultPassphrase("");
+      } else {
+        throw new Error("Set up the ReplyMate vault in Settings before using BYOK.");
+      }
+      setVaultPrompt(null);
+      setError(null);
+      setErrorCode(null);
+    } catch (unlockError) {
+      setErrorCode(null);
+      setError(unlockError instanceof Error ? unlockError.message : String(unlockError));
+    }
   };
 
   const handleInsert = async (text: string) => {
@@ -856,6 +1063,7 @@ export function DraftingPanel() {
   const activePendingEvidence = pendingEvidence.filter(
     (item) => item.state === "queued" || item.state === "processing"
   );
+  const errorRecoveryHint = buildDraftingRecoveryHint(errorCode, error || undefined, settings.get());
 
   return (
     <div className="space-y-6">
@@ -995,6 +1203,56 @@ export function DraftingPanel() {
                 <i className="ph ph-warning-circle text-lg mt-0.5"></i>
                 <span>{error}</span>
               </div>
+              {errorRecoveryHint ? (
+                <div className="space-y-2 text-[11px] text-red-200">
+                  <div>{errorRecoveryHint.detail}</div>
+                  {errorRecoveryHint.command ? (
+                    <div className="rounded border border-red-500/40 bg-black/20 px-2 py-1 font-mono text-[10px] break-all text-red-100">
+                      {errorRecoveryHint.command}
+                    </div>
+                  ) : null}
+                  {errorRecoveryHint.openSettings && !vaultPrompt ? (
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs border border-app-border rounded-full hover:bg-app-border transition-colors text-white"
+                      onClick={() => chrome.runtime.openOptionsPage()}
+                    >
+                      Open Settings
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {vaultPrompt ? (
+                <div className="space-y-2">
+                  {vaultPrompt.mode === "passphrase" ? (
+                    <input
+                      type="password"
+                      placeholder="Vault passphrase"
+                      value={vaultPassphrase}
+                      onChange={(e) => setVaultPassphrase(e.target.value)}
+                      className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
+                    />
+                  ) : null}
+                  <div className="flex gap-2">
+                    {vaultPrompt.mode !== "unconfigured" ? (
+                      <button
+                        type="button"
+                        className="px-3 py-1 text-xs border border-app-border rounded-full hover:bg-app-border transition-colors text-white"
+                        onClick={() => void handleUnlockVault()}
+                      >
+                        {vaultPrompt.mode === "passkey" ? "Unlock With Passkey" : "Unlock Vault"}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs border border-app-border rounded-full hover:bg-app-border transition-colors text-white"
+                      onClick={() => chrome.runtime.openOptionsPage()}
+                    >
+                      Open Settings
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
           {insertNotice && (

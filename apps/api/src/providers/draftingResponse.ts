@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { DraftVariant, GenerateDraftResponse } from "@replymate/contracts";
 import {
   ALTERNATE_ROLE,
@@ -40,7 +39,7 @@ export function buildDraftVariant(
   };
 
   return {
-    id: `draft-${randomUUID().slice(0, 8)}`,
+    id: `draft-${crypto.randomUUID().slice(0, 8)}`,
     role: role as DraftVariant["role"],
     text,
     variantKind,
@@ -58,7 +57,7 @@ export function buildDraftResponse(options: {
 }): GenerateDraftResponse {
   return {
     apiVersion: "v1",
-    requestId: `req_${randomUUID()}`,
+    requestId: `req_${crypto.randomUUID()}`,
     drafts: options.drafts,
     warnings: options.warnings,
     timings: {

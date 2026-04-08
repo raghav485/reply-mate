@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "serve": "node --import tsx src/index.ts",
+    "serve:native-host": "node --import tsx src/native/nativeHost.ts",
     "migrate": "tsx src/persistence/migrate.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/index.js",
+    "start:native-host": "node dist/native/nativeHost.js",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },

@@ -71,6 +71,7 @@ describe("draftDiagnostics", () => {
       input,
       runtime: "ollama",
       usedRetryPass: false,
+      cleanupWinner: "model",
       cleanedSelection,
       contextWinner: "cleaned_draft_reuse",
       contextCandidate: null,
@@ -100,6 +101,7 @@ describe("draftDiagnostics", () => {
       input,
       runtime: "ollama",
       usedRetryPass: true,
+      cleanupWinner: "model",
       cleanedSelection,
       cleanedModelCandidate: {
         ...cleanedSelection,
@@ -133,6 +135,7 @@ describe("draftDiagnostics", () => {
       input,
       runtime: "generic_local_chat_api",
       usedRetryPass: false,
+      cleanupWinner: "model",
       cleanedSelection,
       cleanedModelCandidate: cleanedSelection,
       contextCandidate,
@@ -143,5 +146,26 @@ describe("draftDiagnostics", () => {
     expect(debug.excludedTurns.some((turn) => turn.textPreview.includes("@crmteam"))).toBe(true);
     expect(debug.contextReply.winner).toBe("model");
     expect(debug.contextReply.qualityScore).toBe(contextCandidate.qualityScore);
+  });
+
+  it("marks best-effort cleanup explicitly in debug output", () => {
+    const input = createDraftGenerationInput(makeRequest());
+    const cleanedSelection = validateCleanedDraftCandidate(
+      "Hopefully itd fixed and all the calls are receiving as they should.",
+      input
+    );
+
+    const debug = buildImproveDraftDebug({
+      input,
+      runtime: "ollama",
+      usedRetryPass: true,
+      cleanupWinner: "best_effort_model",
+      cleanedSelection,
+      cleanedModelCandidate: cleanedSelection,
+      contextCandidate: null,
+      contextWinner: "cleaned_draft_reuse",
+    });
+
+    expect(debug.cleanup.winner).toBe("best_effort_model");
   });
 });

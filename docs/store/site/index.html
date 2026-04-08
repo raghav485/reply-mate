@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReplyMate Store Docs</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="eyebrow">ReplyMate Public Docs</div>
+        <h1>Store-facing pages ready for Chrome Web Store submission.</h1>
+        <p>
+          ReplyMate is a local-first Chrome extension that drafts customer-facing replies inside
+          Slack, Gmail, and similar websites using local models or your own provider API key.
+        </p>
+        <div class="toolbar">
+          <a class="button button-primary" href="./privacy-policy.html">Privacy Policy</a>
+          <a class="button button-secondary" href="./support.html">Support</a>
+        </div>
+      </header>
+
+      <main class="content stack">
+        <section class="grid">
+          <article class="card">
+            <h2>What ReplyMate does</h2>
+            <p>
+              ReplyMate captures the active draft plus nearby visible context from supported pages,
+              then helps draft a response in the side panel without forcing you into a hosted AI
+              subscription.
+            </p>
+          </article>
+          <article class="card">
+            <h2>How provider access works</h2>
+            <p>
+              You can connect a local runtime such as Ollama or use your own OpenAI, Anthropic,
+              Gemini, OpenRouter, or custom OpenAI-compatible endpoint directly from the extension.
+            </p>
+          </article>
+          <article class="card">
+            <h2>Security model</h2>
+            <p>
+              Stored provider keys are encrypted before they are written to extension storage.
+              Decrypted keys live only in the extension background while Chrome keeps it active.
+            </p>
+          </article>
+        </section>
+
+        <section class="card">
+          <h2>Recommended public URLs</h2>
+          <ul>
+            <li>Use this homepage as the public support or product URL if you need a single landing page.</li>
+            <li>Use <code>privacy-policy.html</code> for the Chrome Web Store privacy-policy field.</li>
+            <li>Use <code>support.html</code> for the support or help link shown in the listing.</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="footer">
+        ReplyMate public docs are prepared from the repository's store launch materials.
+      </footer>
+    </div>
+  </body>
+</html>

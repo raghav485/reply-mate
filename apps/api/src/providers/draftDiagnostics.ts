@@ -83,6 +83,7 @@ export function buildImproveDraftDebug(options: {
   input: DraftGenerationInput;
   runtime: GenerateDraftDebug["provider"]["runtime"];
   usedRetryPass: boolean;
+  cleanupWinner: GenerateDraftDebug["cleanup"]["winner"];
   cleanedSelection: CleanedDraftCandidate;
   cleanedModelCandidate?: CleanedDraftCandidate | null;
   contextCandidate?: ContextReplyCandidate | null;
@@ -126,7 +127,7 @@ export function buildImproveDraftDebug(options: {
     supportingFacts,
     excludedTurns,
     cleanup: {
-      winner: "model",
+      winner: options.cleanupWinner,
       modelQualityScore: options.cleanedModelCandidate?.qualityScore,
       selectedQualityScore: options.cleanedSelection.qualityScore,
       suspiciousTokens: [...options.cleanedSelection.suspiciousTokens],

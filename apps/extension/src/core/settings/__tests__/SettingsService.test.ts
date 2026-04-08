@@ -6,11 +6,22 @@ type StorageChangeListener = (
   areaName: string
 ) => void;
 
-function createChromeMock(initialStore: Record<string, unknown> = {}) {
+function createChromeMock(
+  initialStore: Record<string, unknown> = {},
+  runtimeHandler?: (message: unknown) => unknown | Promise<unknown>
+) {
   const store = { ...initialStore };
   const listeners = new Set<StorageChangeListener>();
 
   const chromeMock = {
+    runtime: {
+      lastError: null,
+      sendMessage: vi.fn((message: unknown, callback: (response: unknown) => void) => {
+        Promise.resolve(runtimeHandler ? runtimeHandler(message) : undefined).then((response) =>
+          callback(response)
+        );
+      }),
+    },
     storage: {
       local: {
         get: vi.fn(async (keys?: string[]) => {
@@ -132,11 +143,10 @@ describe("SettingsServiceImpl", () => {
     expect(service.get().backend.baseUrl).toBe("http://127.0.0.1:3100");
   });
 
-  it("validates the configured backend with bearer auth", async () => {
-    const { chromeMock } = createChromeMock();
-    const fetchMock = vi.fn(async () => ({
+  it("validates the configured backend through the background runtime bridge", async () => {
+    const { chromeMock } = createChromeMock({}, async () => ({
       ok: true,
-      json: async () => ({
+      result: {
         valid: true,
         warnings: [],
         apiVersion: "v1",
@@ -155,12 +165,10 @@ describe("SettingsServiceImpl", () => {
           imageOcrAvailable: true,
           fallbackMode: "metadata_local",
         },
-      }),
-      status: 200,
-    }) as Response);
+      },
+    }));
 
     vi.stubGlobal("chrome", chromeMock);
-    vi.stubGlobal("fetch", fetchMock);
 
     const service = new SettingsServiceImpl();
     const result = await service.validateConnection({
@@ -185,56 +193,103 @@ describe("SettingsServiceImpl", () => {
       },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3000/v1/settings/validate",
+    expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          Authorization: "Bearer secret-token",
-          "Content-Type": "application/json",
-        }),
-      })
+        type: "VALIDATE_SETTINGS",
+      }),
+      expect.any(Function)
     );
     expect(result.valid).toBe(true);
     expect(result.draftingProvider.runtimeType).toBe("openai_compatible");
   });
 
-  it("manages provider credential status through the local api", async () => {
-    const { chromeMock } = createChromeMock();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          apiVersion: "v1",
-          storage: {
-            backend: "macos_keychain",
-            supported: true,
-            message: "Stored in macOS Keychain.",
-          },
-          credentials: [
-            {
-              target: "cloud",
-              kind: "openai",
-              hasStoredApiKey: true,
-            },
-          ],
-        }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          apiVersion: "v1",
-          storage: {
-            backend: "macos_keychain",
-            supported: true,
-          },
-          credentials: [],
-        }),
-      } as Response);
+  it("reads native runtime status through the background runtime bridge", async () => {
+    const { chromeMock } = createChromeMock({}, async () => ({
+      ok: true,
+      status: {
+        transport: "native_host",
+        availability: "ready",
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message: "ReplyMate local runtime is connected through app.replymate.native.",
+      },
+    }));
 
     vi.stubGlobal("chrome", chromeMock);
-    vi.stubGlobal("fetch", fetchMock);
+
+    const service = new SettingsServiceImpl();
+    const result = await service.getNativeRuntimeStatus({
+      baseUrl: "http://localhost:3000",
+      token: "",
+    });
+
+    expect(result.transport).toBe("native_host");
+    expect(result.availability).toBe("ready");
+    expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "GET_NATIVE_RUNTIME_STATUS",
+      }),
+      expect.any(Function)
+    );
+  });
+
+  it("manages provider credential status through the background runtime bridge", async () => {
+    let callCount = 0;
+    const { chromeMock } = createChromeMock({}, async () => {
+      callCount += 1;
+      return callCount === 1
+        ? {
+            ok: true,
+            status: {
+              apiVersion: "v1",
+              storage: {
+                backend: "macos_keychain",
+                platform: "macos",
+                persistenceMode: "persistent_secure",
+                supported: true,
+                message: "Stored in macOS Keychain.",
+              },
+              runtime: {
+                transport: "native_host",
+                availability: "ready",
+                extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+                hostName: "app.replymate.native",
+                message:
+                  "ReplyMate local runtime is connected through app.replymate.native.",
+              },
+              credentials: [
+                {
+                  target: "cloud",
+                  kind: "openai",
+                  hasStoredApiKey: true,
+                },
+              ],
+            },
+          }
+        : {
+            ok: true,
+            status: {
+              apiVersion: "v1",
+              storage: {
+                backend: "macos_keychain",
+                platform: "macos",
+                persistenceMode: "persistent_secure",
+                supported: true,
+              },
+              runtime: {
+                transport: "native_host",
+                availability: "ready",
+                extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+                hostName: "app.replymate.native",
+                message:
+                  "ReplyMate local runtime is connected through app.replymate.native.",
+              },
+              credentials: [],
+            },
+          };
+    });
+
+    vi.stubGlobal("chrome", chromeMock);
 
     const service = new SettingsServiceImpl();
 
@@ -257,20 +312,21 @@ describe("SettingsServiceImpl", () => {
       kind: "openai",
       hasStoredApiKey: true,
     });
+    expect(saved.runtime?.transport).toBe("native_host");
     expect(deleted.credentials).toHaveLength(0);
-    expect(fetchMock).toHaveBeenNthCalledWith(
+    expect(chromeMock.runtime.sendMessage).toHaveBeenNthCalledWith(
       1,
-      "http://localhost:3000/v1/settings/provider-credentials",
       expect.objectContaining({
-        method: "PUT",
-      })
+        type: "SAVE_PROVIDER_CREDENTIAL",
+      }),
+      expect.any(Function)
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
+    expect(chromeMock.runtime.sendMessage).toHaveBeenNthCalledWith(
       2,
-      "http://localhost:3000/v1/settings/provider-credentials",
       expect.objectContaining({
-        method: "DELETE",
-      })
+        type: "DELETE_PROVIDER_CREDENTIAL",
+      }),
+      expect.any(Function)
     );
   });
 });

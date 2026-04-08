@@ -68,19 +68,66 @@ function createContext(options?: {
           fallbackMode: "metadata_local",
         },
       })),
+      getNativeRuntimeStatus: vi.fn(async () => ({
+        transport: "dev_loopback",
+        availability: "ready",
+        extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+        hostName: "app.replymate.native",
+        message:
+          "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+      })),
       getProviderCredentialStatus: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory", supported: true },
+        storage: {
+          backend: "memory",
+          platform: "macos",
+          persistenceMode: "session_only",
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback",
+          availability: "ready",
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       saveProviderCredential: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory", supported: true },
+        storage: {
+          backend: "memory",
+          platform: "macos",
+          persistenceMode: "session_only",
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback",
+          availability: "ready",
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       deleteProviderCredential: vi.fn(async () => ({
         apiVersion: "v1",
-        storage: { backend: "memory", supported: true },
+        storage: {
+          backend: "memory",
+          platform: "macos",
+          persistenceMode: "session_only",
+          supported: true,
+        },
+        runtime: {
+          transport: "dev_loopback",
+          availability: "ready",
+          extensionId: "gfjfeddlbpnmpflhbfmgpobglimhfjip",
+          hostName: "app.replymate.native",
+          message:
+            "ReplyMate is using the dev loopback runtime path. Native-host registration is not required in dev mode.",
+        },
         credentials: [],
       })),
       subscribe: vi.fn(() => () => {}),

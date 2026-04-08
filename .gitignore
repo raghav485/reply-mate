@@ -3,6 +3,7 @@ dist/
 .turbo/
 *.tsbuildinfo
 test-results/
+apps/extension/store-artifacts/
 .DS_Store
 .env
 .env.*

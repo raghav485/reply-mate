@@ -7,6 +7,7 @@ import {
   type FeatureFlagKey,
   type LocalProviderKind,
   type ModelMode,
+  type NativeRuntimeStatus,
   type ProviderCredentialStatusResponse,
   type ParserProviderStatus,
   type SettingsValidationResponse,
@@ -159,6 +160,188 @@ function providerModeLabel(mode: ModelMode): string {
   return mode === "byok_api" ? "Use Your Own API" : "Local Models";
 }
 
+function formatRuntimeTransportLabel(status: NativeRuntimeStatus): string {
+  switch (status.transport) {
+    case "dev_loopback":
+      return "Dev loopback";
+    case "extension_background":
+      return "Extension vault";
+    case "native_host":
+    default:
+      return "Native host";
+  }
+}
+
+function formatRuntimeAvailabilityLabel(status: NativeRuntimeStatus): string {
+  switch (status.availability) {
+    case "not_registered":
+      return "Not registered";
+    case "forbidden":
+      return "Registration mismatch";
+    case "unavailable":
+      return "Unavailable";
+    case "ready":
+    default:
+      return "Ready";
+  }
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function fromBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function randomBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+async function detectPasskeySupport(): Promise<boolean> {
+  if (!window.isSecureContext || typeof PublicKeyCredential === "undefined") {
+    return false;
+  }
+
+  const capabilityGetter = (
+    PublicKeyCredential as typeof PublicKeyCredential & {
+      getClientCapabilities?: () => Promise<Record<string, boolean>>;
+    }
+  ).getClientCapabilities;
+  if (typeof capabilityGetter === "function") {
+    try {
+      const capabilities = await capabilityGetter.call(PublicKeyCredential);
+      if (capabilities.conditionalCreate || capabilities.hybridTransport || capabilities.passkeyPlatformAuthenticator) {
+        return true;
+      }
+    } catch {
+      // Ignore and fall back to the basic capability checks below.
+    }
+  }
+
+  return typeof navigator.credentials?.create === "function" && typeof navigator.credentials?.get === "function";
+}
+
+async function createPasskeyUnlockMaterial(): Promise<{
+  credentialId: string;
+  prfSaltBase64: string;
+  prfOutputBase64: string;
+}> {
+  const prfSalt = randomBytes(32);
+  const createCredential = (await navigator.credentials.create({
+    publicKey: {
+      challenge: randomBytes(32),
+      rp: { name: "ReplyMate" },
+      user: {
+        id: randomBytes(16),
+        name: `replymate@${chrome.runtime.id}`,
+        displayName: "ReplyMate Vault",
+      },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+      authenticatorSelection: {
+        residentKey: "required",
+        userVerification: "required",
+      },
+      extensions: {
+        prf: {
+          eval: {
+            first: prfSalt,
+          },
+        },
+      },
+    },
+  } as CredentialCreationOptions)) as PublicKeyCredential | null;
+
+  if (!createCredential) {
+    throw new Error("ReplyMate passkey setup was cancelled.");
+  }
+
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: randomBytes(32),
+      userVerification: "required",
+      allowCredentials: [
+        {
+          id: createCredential.rawId,
+          type: "public-key",
+        },
+      ],
+      extensions: {
+        prf: {
+          eval: {
+            first: prfSalt,
+          },
+        },
+      },
+    },
+  } as CredentialRequestOptions)) as PublicKeyCredential | null;
+
+  const prfOutput = (assertion as PublicKeyCredential & {
+    getClientExtensionResults?: () => {
+      prf?: { results?: { first?: ArrayBuffer } };
+    };
+  })
+    ?.getClientExtensionResults?.()
+    ?.prf?.results?.first;
+
+  if (!assertion || !prfOutput) {
+    throw new Error("ReplyMate could not derive the passkey unlock material on this browser.");
+  }
+
+  return {
+    credentialId: toBase64(new Uint8Array(createCredential.rawId)),
+    prfSaltBase64: toBase64(prfSalt),
+    prfOutputBase64: toBase64(new Uint8Array(prfOutput as ArrayBuffer)),
+  };
+}
+
+async function getPasskeyUnlockMaterial(credentialId: string, prfSaltBase64: string): Promise<string> {
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: randomBytes(32),
+      userVerification: "required",
+      allowCredentials: [
+        {
+          id: fromBase64(credentialId),
+          type: "public-key",
+        },
+      ],
+      extensions: {
+        prf: {
+          eval: {
+            first: fromBase64(prfSaltBase64),
+          },
+        },
+      },
+    },
+  } as CredentialRequestOptions)) as PublicKeyCredential | null;
+
+  const prfOutput = (assertion as PublicKeyCredential & {
+    getClientExtensionResults?: () => {
+      prf?: { results?: { first?: ArrayBuffer } };
+    };
+  })
+    ?.getClientExtensionResults?.()
+    ?.prf?.results?.first;
+
+  if (!assertion || !prfOutput) {
+    throw new Error("ReplyMate passkey unlock was cancelled or unavailable.");
+  }
+
+  return toBase64(new Uint8Array(prfOutput as ArrayBuffer));
+}
+
 function applyCredentialStatus(
   settings: AppSettings,
   status: ProviderCredentialStatusResponse
@@ -188,9 +371,96 @@ function applyCredentialStatus(
   };
 }
 
+function getVaultStatus(status: ProviderCredentialStatusResponse | null | undefined) {
+  return (
+    status?.vault || {
+      mode: "unconfigured",
+      lockState: "setup_required",
+      sessionCacheEnabled: true,
+      passkeySupported: false,
+      encryptedEntryCount: 0,
+    }
+  );
+}
+
+type LaunchChecklistItem = {
+  label: string;
+  status: "complete" | "action_required" | "optional";
+  detail: string;
+};
+
+function buildLaunchChecklist(params: {
+  settings: AppSettings;
+  credentialStatus: ProviderCredentialStatusResponse | null;
+  validationResult: SettingsValidationResponse | null;
+  dirty: boolean;
+}): LaunchChecklistItem[] {
+  const { settings, credentialStatus, validationResult, dirty } = params;
+  const vaultStatus = getVaultStatus(credentialStatus);
+  const localConfigured =
+    settings.provider.local.baseUrl.trim().length > 0 &&
+    settings.provider.local.modelName.trim().length > 0;
+  const cloudConfigured =
+    settings.provider.cloud.modelName.trim().length > 0 &&
+    (settings.provider.cloud.kind !== "openai_compatible_custom" ||
+      settings.provider.cloud.baseUrl.trim().length > 0);
+  const providerConfigured =
+    settings.provider.mode === "local_models" ? localConfigured : cloudConfigured;
+  const requiresVault =
+    settings.provider.mode === "byok_api" ||
+    settings.provider.local.kind === "openai_compatible_local";
+  const hasValidated = !dirty && (validationResult?.valid || Boolean(settings.backend.lastValidatedAt));
+
+  return [
+    {
+      label: "Choose a model path",
+      status: "complete",
+      detail:
+        settings.provider.mode === "local_models"
+          ? "Local Models is active. ReplyMate will talk directly to your local runtime."
+          : "Use Your Own API is active. ReplyMate will call your selected provider directly.",
+    },
+    {
+      label: "Configure the current provider",
+      status: providerConfigured ? "complete" : "action_required",
+      detail: providerConfigured
+        ? settings.provider.mode === "local_models"
+          ? `Runtime ${localProviderLabel(settings.provider.local.kind)} is configured for ${settings.provider.local.modelName || "your selected model"}.`
+          : `${cloudProviderLabel(settings.provider.cloud.kind)} is configured for ${settings.provider.cloud.modelName || "your selected model"}.`
+        : settings.provider.mode === "local_models"
+          ? "Add a loopback base URL and model name for your local runtime."
+          : "Choose a provider model and, for custom OpenAI-compatible hosts, enter the base URL.",
+    },
+    {
+      label: "Protect stored keys with the vault",
+      status: requiresVault
+        ? vaultStatus.mode === "unconfigured"
+          ? "action_required"
+          : "complete"
+        : "optional",
+      detail: requiresVault
+        ? vaultStatus.mode === "unconfigured"
+          ? "Set up a passkey vault or passphrase vault before ReplyMate can remember this provider key."
+          : `ReplyMate is using a ${vaultStatus.mode.replace(/_/g, " ")} vault. Chrome may ask you to unlock it again after the background unloads.`
+        : "Ollama does not require a stored provider key. Set up the vault only if you want ReplyMate to remember another provider credential.",
+    },
+    {
+      label: "Validate before drafting",
+      status: hasValidated ? "complete" : "action_required",
+      detail: hasValidated
+        ? "The current saved setup has been validated and is ready for store-like testing."
+        : dirty
+          ? "Apply Settings, then run Validate Connection so ReplyMate can confirm the current runtime."
+          : "Run Validate Connection after changing provider mode, model, base URL, or vault state.",
+    },
+  ];
+}
+
 export function SettingsPanel() {
   const { settings, featureFlags } = useShellContext();
   const [draft, setDraft] = useState<AppSettings>(() => cloneSettings(settings.get()));
+  const [localApiKeyInput, setLocalApiKeyInput] = useState("");
+  const [cloudApiKeyInput, setCloudApiKeyInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedMessage, setSavedMessage] = useState("Settings Applied");
@@ -198,14 +468,29 @@ export function SettingsPanel() {
   const [validation, setValidation] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
     useState<SettingsValidationResponse | null>(null);
+  const [credentialStatus, setCredentialStatus] =
+    useState<ProviderCredentialStatusResponse | null>(null);
   const [credentialStatusMessage, setCredentialStatusMessage] = useState<string | null>(null);
+  const [nativeRuntimeStatus, setNativeRuntimeStatus] = useState<NativeRuntimeStatus | null>(null);
+  const [passkeySupported, setPasskeySupported] = useState(false);
+  const [passphraseInput, setPassphraseInput] = useState("");
+  const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
+  const [unlockPassphraseInput, setUnlockPassphraseInput] = useState("");
 
   useEffect(() => {
     setDraft(cloneSettings(settings.get()));
+    setLocalApiKeyInput("");
+    setCloudApiKeyInput("");
     return settings.subscribe((next) => {
       setDraft(cloneSettings(next));
+      setLocalApiKeyInput("");
+      setCloudApiKeyInput("");
     });
   }, [settings]);
+
+  useEffect(() => {
+    void detectPasskeySupport().then(setPasskeySupported).catch(() => setPasskeySupported(false));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +502,14 @@ export function SettingsPanel() {
       }
 
       try {
+        const runtimeStatus = await settings.getNativeRuntimeStatus({
+          baseUrl: current.backend.baseUrl,
+          token: current.backend.token,
+        });
+        if (!cancelled) {
+          setNativeRuntimeStatus(runtimeStatus);
+        }
+
         const status = await settings.getProviderCredentialStatus({
           baseUrl: current.backend.baseUrl,
           token: current.backend.token,
@@ -224,11 +517,18 @@ export function SettingsPanel() {
         if (cancelled) {
           return;
         }
-        setCredentialStatusMessage(status.storage.message || null);
+        setCredentialStatus(status);
+        setCredentialStatusMessage(
+          getVaultStatus(status).message ||
+            status.runtime?.message ||
+            status.storage.message ||
+            runtimeStatus.message ||
+            null
+        );
         setDraft((prev) => applyCredentialStatus(prev, status));
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setCredentialStatusMessage(null);
+          setCredentialStatusMessage(error instanceof Error ? error.message : null);
         }
       }
     }
@@ -249,6 +549,19 @@ export function SettingsPanel() {
   const dirty = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(settings.get()),
     [draft, settings]
+  );
+  const extensionId =
+    nativeRuntimeStatus?.extensionId ||
+    (typeof chrome !== "undefined" ? chrome.runtime.id : "your-extension-id");
+  const launchChecklist = useMemo(
+    () =>
+      buildLaunchChecklist({
+        settings: draft,
+        credentialStatus,
+        validationResult,
+        dirty,
+      }),
+    [credentialStatus, dirty, draft, validationResult]
   );
 
   const handleToggle = (key: FeatureFlagKey) => {
@@ -275,11 +588,135 @@ export function SettingsPanel() {
     }));
   };
 
+  const getPendingCredential = () => {
+    if (
+      draft.provider.mode === "local_models" &&
+      draft.provider.local.kind === "openai_compatible_local" &&
+      localApiKeyInput.trim()
+    ) {
+      return {
+        target: "local" as const,
+        kind: draft.provider.local.kind,
+        apiKey: localApiKeyInput.trim(),
+      };
+    }
+
+    if (draft.provider.mode === "byok_api" && cloudApiKeyInput.trim()) {
+      return {
+        target: "cloud" as const,
+        kind: draft.provider.cloud.kind,
+        apiKey: cloudApiKeyInput.trim(),
+      };
+    }
+
+    return null;
+  };
+
+  const setupVaultWithPasskey = async () => {
+    const pendingCredential = getPendingCredential();
+    if (!pendingCredential) {
+      throw new Error("Enter a provider key before setting up the ReplyMate vault.");
+    }
+    if (!passkeySupported) {
+      throw new Error(
+        "Passkey unlock is unavailable on this browser. Use the passphrase fallback instead."
+      );
+    }
+    const material = await createPasskeyUnlockMaterial();
+    const status = await settings.setupVaultWithPasskey!({
+      ...material,
+      sessionCacheEnabled: true,
+      initialCredential: pendingCredential,
+    });
+    setCredentialStatus(status);
+    setCredentialStatusMessage(getVaultStatus(status).message || status.storage.message || null);
+    setDraft((prev) => applyCredentialStatus(prev, status));
+    setLocalApiKeyInput("");
+    setCloudApiKeyInput("");
+    return status;
+  };
+
+  const setupVaultWithPassphrase = async () => {
+    const pendingCredential = getPendingCredential();
+    if (!pendingCredential) {
+      throw new Error("Enter a provider key before setting up the ReplyMate vault.");
+    }
+    if (!passphraseInput.trim()) {
+      throw new Error("Enter a passphrase to configure the ReplyMate vault.");
+    }
+    const status = await settings.setupVaultWithPassphrase!({
+      passphrase: passphraseInput,
+      sessionCacheEnabled: true,
+      initialCredential: pendingCredential,
+    });
+    setCredentialStatus(status);
+    setCredentialStatusMessage(getVaultStatus(status).message || status.storage.message || null);
+    setDraft((prev) => applyCredentialStatus(prev, status));
+    setLocalApiKeyInput("");
+    setCloudApiKeyInput("");
+    setPassphraseInput("");
+    setShowPassphraseSetup(false);
+    return status;
+  };
+
+  const unlockVault = async (status: ProviderCredentialStatusResponse) => {
+    if (getVaultStatus(status).mode === "passkey") {
+      if (!getVaultStatus(status).credentialId || !getVaultStatus(status).prfSaltBase64) {
+        throw new Error("ReplyMate passkey vault metadata is incomplete.");
+      }
+      const prfOutputBase64 = await getPasskeyUnlockMaterial(
+        getVaultStatus(status).credentialId!,
+        getVaultStatus(status).prfSaltBase64!
+      );
+      return settings.unlockVaultWithPasskey!({ prfOutputBase64 });
+    }
+
+    if (!unlockPassphraseInput.trim()) {
+      throw new Error("Enter your ReplyMate vault passphrase to unlock.");
+    }
+
+    return settings.unlockVaultWithPassphrase!({
+      passphrase: unlockPassphraseInput,
+    });
+  };
+
+  const ensureOptionalHostPermission = async (settingsDraft: AppSettings) => {
+    if (settingsDraft.provider.mode !== "byok_api") {
+      return;
+    }
+    if (settingsDraft.provider.cloud.kind !== "openai_compatible_custom") {
+      return;
+    }
+    const baseUrl = settingsDraft.provider.cloud.baseUrl.trim();
+    if (!baseUrl) {
+      return;
+    }
+    const origin = new URL(baseUrl).origin;
+    const origins = [`${origin}/*`];
+    const hasPermission = await chrome.permissions.contains({ origins });
+    if (hasPermission) {
+      return;
+    }
+    const granted = await chrome.permissions.request({ origins });
+    if (!granted) {
+      throw new Error(
+        `ReplyMate needs one-time Chrome host permission for ${origin} before it can use this custom provider.`
+      );
+    }
+  };
+
   const handleValidate = async () => {
     setError(null);
     setValidation(null);
 
     try {
+      await ensureOptionalHostPermission(draft);
+      if (getPendingCredential()) {
+        setValidation(
+          "Apply Settings to store the provider key in the ReplyMate vault before validating."
+        );
+        return false;
+      }
       const response = await settings.validateConnection({
         baseUrl: draft.backend.baseUrl,
         token: draft.backend.token,
@@ -322,67 +759,66 @@ export function SettingsPanel() {
             draft.provider.mode === "local_models" ? "local_only" : "cloud_quality",
         },
       };
-
-      const persistCredentialIfPresent = async (
-        target: "local" | "cloud"
-      ): Promise<ProviderCredentialStatusResponse | null> => {
-        if (target === "local") {
-          if (
-            nextDraft.provider.local.kind !== "openai_compatible_local" ||
-            !nextDraft.provider.local.apiKey.trim()
-          ) {
-            return null;
-          }
-
-          return settings.saveProviderCredential({
-            baseUrl: nextDraft.backend.baseUrl,
-            token: nextDraft.backend.token,
-            target: "local",
-            kind: nextDraft.provider.local.kind,
-            apiKey: nextDraft.provider.local.apiKey.trim(),
-          });
-        }
-
-        if (!nextDraft.provider.cloud.apiKey.trim()) {
-          return null;
-        }
-
-        return settings.saveProviderCredential({
-          baseUrl: nextDraft.backend.baseUrl,
-          token: nextDraft.backend.token,
-          target: "cloud",
-          kind: nextDraft.provider.cloud.kind,
-          apiKey: nextDraft.provider.cloud.apiKey.trim(),
-        });
-      };
-
-      const [localCredentialStatus, cloudCredentialStatus] = await Promise.all([
-        persistCredentialIfPresent("local"),
-        persistCredentialIfPresent("cloud"),
-      ]);
-
+      await ensureOptionalHostPermission(nextDraft);
       nextDraft.provider.local.apiKey = "";
       nextDraft.provider.cloud.apiKey = "";
 
-      let syncedCredentialStatus: ProviderCredentialStatusResponse | null = null;
+      let syncedCredentialStatus = credentialStatus;
+      const pendingCredential = getPendingCredential();
+      if (pendingCredential) {
+        if (getVaultStatus(credentialStatus).mode === "unconfigured") {
+          if (passkeySupported) {
+            syncedCredentialStatus = await setupVaultWithPasskey();
+          } else if (showPassphraseSetup && passphraseInput.trim()) {
+            syncedCredentialStatus = await setupVaultWithPassphrase();
+          } else {
+            throw new Error(
+              "Passkey unlock is unavailable. Set a passphrase vault before storing a provider key."
+            );
+          }
+        } else {
+          if (getVaultStatus(credentialStatus).lockState !== "unlocked") {
+            await unlockVault(
+              credentialStatus ||
+                (await settings.getProviderCredentialStatus({
+                  baseUrl: nextDraft.backend.baseUrl,
+                  token: nextDraft.backend.token,
+                }))
+            );
+          }
+
+          syncedCredentialStatus = await settings.saveProviderCredential({
+            baseUrl: nextDraft.backend.baseUrl,
+            token: nextDraft.backend.token,
+            ...pendingCredential,
+          });
+        }
+      }
+
       if (nextDraft.backend.baseUrl) {
         try {
           syncedCredentialStatus =
-            cloudCredentialStatus ||
-            localCredentialStatus ||
+            syncedCredentialStatus ||
             (await settings.getProviderCredentialStatus({
               baseUrl: nextDraft.backend.baseUrl,
               token: nextDraft.backend.token,
             }));
         } catch (credentialError) {
-          if (cloudCredentialStatus || localCredentialStatus) {
+          if (syncedCredentialStatus) {
             throw credentialError;
           }
         }
       }
 
       if (syncedCredentialStatus) {
-        setCredentialStatusMessage(syncedCredentialStatus.storage.message || null);
+        setCredentialStatus(syncedCredentialStatus);
+        setNativeRuntimeStatus(syncedCredentialStatus.runtime || nativeRuntimeStatus);
+        setCredentialStatusMessage(
+          getVaultStatus(syncedCredentialStatus).message ||
+            syncedCredentialStatus.runtime?.message ||
+            syncedCredentialStatus.storage.message ||
+            null
+        );
         nextDraft.provider = applyCredentialStatus(nextDraft, syncedCredentialStatus).provider;
       }
 
@@ -418,6 +854,8 @@ export function SettingsPanel() {
 
       setDraft(nextDraft);
       await settings.save(nextDraft);
+      setLocalApiKeyInput("");
+      setCloudApiKeyInput("");
       for (const [flag, value] of Object.entries(nextDraft.featureFlags)) {
         featureFlags.setFlag(flag as FeatureFlagKey, value);
       }
@@ -465,7 +903,11 @@ export function SettingsPanel() {
         },
         status
       );
-      setCredentialStatusMessage(status.storage.message || null);
+      setCredentialStatus(status);
+      setNativeRuntimeStatus(status.runtime || nativeRuntimeStatus);
+      setCredentialStatusMessage(
+        getVaultStatus(status).message || status.runtime?.message || status.storage.message || null
+      );
       setDraft(nextDraft);
       await settings.save(nextDraft);
     } catch (err) {
@@ -488,8 +930,8 @@ export function SettingsPanel() {
         <div className="bg-app-panel border border-app-border rounded-xl p-5 space-y-4 shadow-sm">
           <div className="p-3 bg-app-accent/5 border border-app-accent/20 rounded-lg space-y-1">
             <div className="text-[11px] text-app-textSecondary leading-relaxed">
-              ReplyMate is free. Provider keys are stored by your local ReplyMate API, not in the
-              extension itself.
+              ReplyMate stores provider keys only as encrypted vault data at rest. Decrypted keys
+              live only in the background while Chrome keeps this extension worker alive.
             </div>
             <div className="text-[11px] text-app-textSecondary leading-relaxed italic">
               Recommended local setup: <span className="text-white font-medium">qwen3:8b</span> for
@@ -500,6 +942,99 @@ export function SettingsPanel() {
                 {credentialStatusMessage}
               </div>
             ) : null}
+            {nativeRuntimeStatus ? (
+              <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                Runtime transport:{" "}
+                <span className="text-white font-medium">
+                  {formatRuntimeTransportLabel(nativeRuntimeStatus)}
+                </span>{" "}
+                ({formatRuntimeAvailabilityLabel(nativeRuntimeStatus)}). Extension ID:{" "}
+                <span className="text-white font-medium">
+                  {nativeRuntimeStatus.extensionId}
+                </span>
+                {nativeRuntimeStatus.actionHint ? ` ${nativeRuntimeStatus.actionHint}` : ""}
+              </div>
+            ) : null}
+            {credentialStatus ? (
+              <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                Secure storage:{" "}
+                <span className="text-white font-medium">
+                  {credentialStatus.storage.backend.replace(/_/g, " ")}
+                </span>{" "}
+                on{" "}
+                <span className="text-white font-medium">
+                  {credentialStatus.storage.platform}
+                </span>{" "}
+                ({credentialStatus.storage.persistenceMode.replace(/_/g, " ")}).
+              </div>
+            ) : null}
+            {credentialStatus ? (
+              <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                Vault:{" "}
+                <span className="text-white font-medium">
+                  {getVaultStatus(credentialStatus).mode.replace(/_/g, " ")}
+                </span>{" "}
+                ·{" "}
+                <span className="text-white font-medium">
+                  {getVaultStatus(credentialStatus).lockState.replace(/_/g, " ")}
+                </span>
+              </div>
+            ) : null}
+            <div className="text-[11px] text-app-textSecondary leading-relaxed">
+              Passkey unlock:{" "}
+              <span className="text-white font-medium">
+                {passkeySupported ? "available" : "unavailable"}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-app-bg/40 border border-app-border rounded-lg space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold text-app-textSecondary uppercase tracking-widest">
+                  First-Run Checklist
+                </div>
+                <div className="text-[11px] text-app-textSecondary leading-relaxed mt-1">
+                  Public launch path: choose your provider mode, set up the vault if you want
+                  ReplyMate to remember a key, validate once, and expect Chrome to relock after
+                  background worker loss.
+                </div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-app-border text-app-textSecondary uppercase font-bold">
+                Store Path
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {launchChecklist.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-app-border bg-app-panel/60 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold text-white">{item.label}</div>
+                    <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                      {item.detail}
+                    </div>
+                  </div>
+                  <span
+                    className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border uppercase font-bold ${
+                      item.status === "complete"
+                        ? "border-app-success/40 bg-app-success/10 text-app-success"
+                        : item.status === "optional"
+                          ? "border-app-border bg-app-bg text-app-textSecondary"
+                          : "border-app-warning/40 bg-app-warning/10 text-app-warning"
+                    }`}
+                  >
+                    {item.status === "complete"
+                      ? "Done"
+                      : item.status === "optional"
+                        ? "Optional"
+                        : "Next"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -634,33 +1169,41 @@ export function SettingsPanel() {
                 className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
               />
 
+              {draft.provider.local.kind === "ollama" ? (
+                <div className="rounded-lg border border-app-border bg-app-bg/40 px-3 py-3 text-[11px] text-app-textSecondary leading-relaxed space-y-2">
+                  <div>
+                    Public local-model setup: keep Ollama running, use{" "}
+                    <span className="text-white font-medium">qwen3:8b</span> for writing, and
+                    add <span className="text-white font-medium">minicpm-v</span> if you want
+                    image OCR.
+                  </div>
+                  <div>
+                    If Validate Connection passes but Generate Replies returns{" "}
+                    <span className="text-white font-medium">Forbidden</span>, Ollama is likely
+                    blocking the extension origin. Restart Ollama with:
+                  </div>
+                  <div className="rounded border border-app-border bg-app-panel px-2 py-1 font-mono text-[10px] text-white break-all">
+                    OLLAMA_ORIGINS=chrome-extension://{extensionId}
+                  </div>
+                </div>
+              ) : null}
+
               {draft.provider.local.kind === "openai_compatible_local" ? (
                 <div className="space-y-2">
                   <input
                     type="password"
                     placeholder={
                       draft.provider.local.hasStoredApiKey
-                        ? "Stored securely in your local API"
+                        ? "Stored in the ReplyMate vault"
                         : "Optional local API key"
                     }
-                    value={draft.provider.local.apiKey}
-                    onChange={(e) =>
-                      setDraft((prev) => ({
-                        ...prev,
-                        provider: {
-                          ...prev.provider,
-                          local: {
-                            ...prev.provider.local,
-                            apiKey: e.target.value,
-                          },
-                        },
-                      }))
-                    }
+                    value={localApiKeyInput}
+                    onChange={(e) => setLocalApiKeyInput(e.target.value)}
                     className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
                   />
                   {draft.provider.local.hasStoredApiKey ? (
                     <div className="flex items-center justify-between text-[11px] text-app-textSecondary">
-                      <span>Local API key is stored securely by the local ReplyMate API.</span>
+                      <span>Local API key is stored as encrypted ReplyMate vault data.</span>
                       <button
                         className="text-app-warning hover:text-white transition-colors"
                         onClick={() => void handleRemoveStoredCredential("local")}
@@ -725,27 +1268,16 @@ export function SettingsPanel() {
                   type="password"
                   placeholder={
                     draft.provider.cloud.hasStoredApiKey
-                      ? "Stored securely in your local API"
+                      ? "Stored in the ReplyMate vault"
                       : "Provider API key"
                   }
-                  value={draft.provider.cloud.apiKey}
-                  onChange={(e) =>
-                    setDraft((prev) => ({
-                      ...prev,
-                      provider: {
-                        ...prev.provider,
-                        cloud: {
-                          ...prev.provider.cloud,
-                          apiKey: e.target.value,
-                        },
-                      },
-                    }))
-                  }
+                  value={cloudApiKeyInput}
+                  onChange={(e) => setCloudApiKeyInput(e.target.value)}
                   className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
                 />
                 {draft.provider.cloud.hasStoredApiKey ? (
                   <div className="flex items-center justify-between text-[11px] text-app-textSecondary">
-                    <span>Provider key is stored securely by the local ReplyMate API.</span>
+                    <span>Provider key is stored as encrypted ReplyMate vault data.</span>
                     <button
                       className="text-app-warning hover:text-white transition-colors"
                       onClick={() => void handleRemoveStoredCredential("cloud")}
@@ -774,8 +1306,128 @@ export function SettingsPanel() {
                 }
                 className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
               />
+
+              {draft.provider.cloud.kind === "openai_compatible_custom" ? (
+                <div className="rounded-lg border border-app-border bg-app-bg/40 px-3 py-3 text-[11px] text-app-textSecondary leading-relaxed">
+                  ReplyMate asks Chrome for one-time access to the exact custom origin you enter
+                  here. The permission prompt appears only when you apply settings or validate this
+                  custom provider.
+                </div>
+              ) : null}
             </div>
           )}
+
+          <div className="pt-2 border-t border-app-border space-y-3">
+            <div className="text-[10px] font-bold text-app-textSecondary uppercase tracking-widest ml-1">
+              ReplyMate Vault
+            </div>
+            {getVaultStatus(credentialStatus).lockState === "setup_required" ? (
+              <div className="space-y-2">
+                <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                  Set up a vault before ReplyMate can keep a provider key encrypted at rest.
+                </div>
+                {passkeySupported ? (
+                  <button
+                    className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                    onClick={() =>
+                      void setupVaultWithPasskey().catch((err) =>
+                        setError(err instanceof Error ? err.message : String(err))
+                      )
+                    }
+                  >
+                    Set Up Passkey Vault
+                  </button>
+                ) : null}
+                <button
+                  className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                  onClick={() => setShowPassphraseSetup((prev) => !prev)}
+                >
+                  {showPassphraseSetup ? "Hide Passphrase Setup" : "Use Passphrase Fallback"}
+                </button>
+                {showPassphraseSetup ? (
+                  <div className="space-y-2">
+                    <input
+                      type="password"
+                      placeholder="Vault passphrase"
+                      value={passphraseInput}
+                      onChange={(e) => setPassphraseInput(e.target.value)}
+                      className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
+                    />
+                    <button
+                      className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                      onClick={() =>
+                        void setupVaultWithPassphrase().catch((err) =>
+                          setError(err instanceof Error ? err.message : String(err))
+                        )
+                      }
+                    >
+                      Save Passphrase Vault
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : getVaultStatus(credentialStatus).lockState === "locked" ? (
+              <div className="space-y-2">
+                <div className="text-[11px] text-app-textSecondary leading-relaxed">
+                  ReplyMate is locked for this browser session. Chrome may relock it after the background unloads.
+                </div>
+                {getVaultStatus(credentialStatus).mode === "passkey" ? (
+                  <button
+                    className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                    onClick={() =>
+                      void unlockVault(credentialStatus!)
+                        .then((status) => {
+                          setCredentialStatus(status);
+                          setCredentialStatusMessage(getVaultStatus(status).message || null);
+                        })
+                        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                    }
+                  >
+                    Unlock With Passkey
+                  </button>
+                ) : (
+                  <>
+                    <input
+                      type="password"
+                      placeholder="Vault passphrase"
+                      value={unlockPassphraseInput}
+                      onChange={(e) => setUnlockPassphraseInput(e.target.value)}
+                      className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-app-accent/50 transition-all placeholder:text-app-textSecondary/50"
+                    />
+                    <button
+                      className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                      onClick={() =>
+                        void unlockVault(credentialStatus!)
+                          .then((status) => {
+                            setCredentialStatus(status);
+                            setCredentialStatusMessage(getVaultStatus(status).message || null);
+                            setUnlockPassphraseInput("");
+                          })
+                          .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                      }
+                    >
+                      Unlock With Passphrase
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : getVaultStatus(credentialStatus).lockState === "unlocked" ? (
+              <button
+                className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all"
+                onClick={() =>
+                  void settings
+                    .lockVault!()
+                    .then((status) => {
+                      setCredentialStatus(status);
+                      setCredentialStatusMessage(getVaultStatus(status).message || null);
+                    })
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                }
+              >
+                Lock Vault
+              </button>
+            ) : null}
+          </div>
 
           <button
             className="w-full py-2.5 bg-app-bg border border-app-border rounded-lg text-xs font-bold text-app-textSecondary hover:text-white hover:bg-app-panel transition-all flex items-center justify-center space-x-2 shadow-sm"
