@@ -9,6 +9,9 @@ on:
       - ".github/workflows/deploy-store-site.yml"
       - "docs/store/site/**"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: read
   pages: write
@@ -26,7 +29,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload static site artifact
         uses: actions/upload-pages-artifact@v4

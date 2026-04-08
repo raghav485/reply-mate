@@ -22,8 +22,9 @@ This repo now includes a GitHub Pages workflow at
 Default GitHub Pages flow for this store-release branch:
 
 1. Push the workflow and `docs/store/site` changes to `V1`
-2. Enable GitHub Pages in the repository settings with `GitHub Actions` as the source
-3. Wait for the workflow to publish the site
+2. In GitHub repository settings, enable GitHub Pages and set `Source` to `GitHub Actions`
+3. Push again to `V1` or re-run the failed workflow after Pages is enabled
+4. Wait for the workflow to publish the site
 
 This repo's Chrome Web Store release path is intended to stay on `V1`, separate from the prototype on
 `main`.
