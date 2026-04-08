@@ -5,6 +5,7 @@ Use this template to record the manual checks completed against the store-path b
 ## Build under test
 
 - Date:
+- Branch:
 - Commit:
 - Chrome version:
 - Tester:

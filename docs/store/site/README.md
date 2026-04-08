@@ -19,11 +19,18 @@ Recommended publishing options:
 This repo now includes a GitHub Pages workflow at
 [`../../.github/workflows/deploy-store-site.yml`](../../.github/workflows/deploy-store-site.yml).
 
-Default GitHub Pages flow:
+Default GitHub Pages flow for this store-release branch:
 
-1. Push the workflow and `docs/store/site` changes to `main`
+1. Push the workflow and `docs/store/site` changes to `V1`
 2. Enable GitHub Pages in the repository settings with `GitHub Actions` as the source
 3. Wait for the workflow to publish the site
+
+This repo's Chrome Web Store release path is intended to stay on `V1`, separate from the prototype on
+`main`.
+
+If `main` remains the default branch, rely on push-triggered deploys from `V1`. GitHub may not show
+the manual `Run workflow` button for this workflow unless the workflow file also exists on the
+default branch.
 
 If you use the default GitHub Pages host, the URLs will look like:
 

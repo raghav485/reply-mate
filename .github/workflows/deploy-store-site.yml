@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - V1
     paths:
       - ".github/workflows/deploy-store-site.yml"
       - "docs/store/site/**"
